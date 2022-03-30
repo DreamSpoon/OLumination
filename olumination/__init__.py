@@ -41,7 +41,9 @@ import bpy
 from .sunlit_rig import (OLuminSL_CreateRig, OLuminSL_BakeSelectedSensors, OLuminSL_BakeRigSensors,
     OLuminSL_SensorImagePack, OLuminSL_SetSelectSunColor, OLuminSL_SetRigSunColor, OLuminSL_SetSelectSunAngle,
     OLuminSL_SetRigSunAngle, OLuminSL_SelectVisibleRigs, OLuminSL_SelectAllRigs, OLuminSL_SelectRigRegularSensors,
-    OLuminSL_SelectRigODiskSensors, OLuminSL_SelectRigRegularLights, OLuminSL_SelectRigODiskLights)
+    OLuminSL_SelectRigODiskSensors, OLuminSL_SelectRigRegularLights, OLuminSL_SelectRigODiskLights,
+    OLuminSL_PointRegularFromView, OLuminSL_PointODiskFromView)
+from .proxy_metric import (OLuminPM_CreateSimpleHumanProxy)
 
 AngularDiameterEnabled = False
 if bpy.app.version < (2,80,0):
@@ -109,7 +111,27 @@ class OLUMIN_PT_SunlitRig(bpy.types.Panel):
         box.operator("olumin_sl.select_rig_odisk_sensors")
         box.operator("olumin_sl.select_rig_regular_lights")
         box.operator("olumin_sl.select_rig_odisk_lights")
+        box = layout.box()
+        box.label(text="ODisk Point Direction")
+        box.operator("olumin_sl.point_regular_from_view")
+        box.prop(scn, "OLuminSL_RegularNumPointFromView")
+        box.operator("olumin_sl.point_odisk_from_view")
+        box.prop(scn, "OLuminSL_ODiskNumPointFromView")
         ##box.prop(scn, "OLuminSL_DeselectFirst")   # boolean, deselect objects before selecting desired objects
+
+class OLUMIN_PT_ProxyMetric(bpy.types.Panel):
+    bl_label = "Proxy Metric"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = Region
+    bl_category = "OLumin"
+
+    def draw(self, context):
+        layout = self.layout
+        scn = context.scene
+
+        box = layout.box()
+        box.label(text="Create Proxy Metric")
+        box.operator("olumin_pm.create_proxy_metric_simple_human")
 
 classes = [
     OLUMIN_PT_SunlitRig,
@@ -127,6 +149,10 @@ classes = [
     OLuminSL_SelectRigODiskSensors,
     OLuminSL_SelectRigRegularLights,
     OLuminSL_SelectRigODiskLights,
+    OLuminSL_PointRegularFromView,
+    OLuminSL_PointODiskFromView,
+    OLUMIN_PT_ProxyMetric,
+    OLuminPM_CreateSimpleHumanProxy,
 ]
 
 def register():
@@ -201,6 +227,11 @@ def register_props():
     bts.OLuminSL_ODiskSensorSampleHeightPct = bp.FloatProperty(name="ODisk Height Sample Pct",
         description="Occluding Disk sun sensor image height (in percent of image height) to sample when computing " +
         "ODisk sun object's color", subtype="PERCENTAGE", default=0.5, min=0.0, max=1.0)
+
+    bts.OLuminSL_RegularNumPointFromView = bp.IntProperty(name="Regular Sun Index", description="Index of regular " +
+        "sun for which pointing direction must be aligned with view center direction", default=0, min=0)
+    bts.OLuminSL_ODiskNumPointFromView = bp.IntProperty(name="ODisk Index", description="Index of ODisk for which " +
+        "pointing direction must be aligned with view center direction", default=0, min=0)
 
 def unregister():
     for cls in classes:

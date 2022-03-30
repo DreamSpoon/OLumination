@@ -57,6 +57,9 @@ def object_add_modifier_taper(obj, modifier_name, t_factor):
 def set_object_hide_view(obj, hide_state):
     obj.hide = hide_state
 
+def get_object_hide_view(obj):
+    return obj.hide
+
 def set_object_list_hide_view(obj_list, hide_state):
     for obj in obj_list:
         set_object_hide_view(obj, hide_state)

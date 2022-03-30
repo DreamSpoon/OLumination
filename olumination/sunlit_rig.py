@@ -16,10 +16,11 @@
 #
 # ##### END GPL LICENSE BLOCK #####
 
-import bpy
-import bmesh
 import math
 from mathutils import Vector
+import bpy
+import bmesh
+import bpy_extras.view3d_utils
 
 if bpy.app.version < (2,80,0):
     from .imp_v27 import *
@@ -885,7 +886,7 @@ def bake_select_sunlit_sensors(context, sensor_bake_samples, hide_all_lights):
     if hide_all_lights:
         lights = get_sunlit_suns_from_all()
     else:
-        lights = get_sunlit_suns_from_selected()
+        lights = get_sunlit_suns_from_selected(context)
     sensors = get_sunlit_sensors_from_selected(context)
     bake_sunlit_sensors(context, sensors, sensor_bake_samples, lights)
 
@@ -893,7 +894,7 @@ def bake_sunlit_armature_list_sensors(context, sensor_bake_samples, hide_all_lig
     if hide_all_lights:
         lights = get_sunlit_suns_from_all()
     else:
-        lights = get_sunlit_suns_from_selected()
+        lights = get_sunlit_suns_from_selected(context)
     sensors = []
     for armature in armature_list:
         sensors = sensors + get_sunlit_regular_sensors_from_armature(armature) + get_sunlit_odisk_sensors_from_armature(armature)
@@ -910,12 +911,10 @@ def hide_render_lights(new_hide_state, lights):
     # return old states of lights
     return hide_light_data
 
-
 def undo_hide_render_lights(hide_light_data):
     # restore old states
     for lit_name, lit_hide_render_state in hide_light_data.items():
         bpy.data.objects[lit_name].hide_render = lit_hide_render_state
-
 
 # Important Note:
 # If a HDRI is being baked to Sun lights, then all other light sources will adversely affect the bake to image process.
@@ -1262,7 +1261,7 @@ class OLuminSL_SelectVisibleRigs(bpy.types.Operator):
     def execute(self, context):
         all_obj_list = get_all_objects_list()
         for obj in all_obj_list:
-            if not obj.hide and is_sunlit_armature(obj):
+            if not get_object_hide_view(obj) and is_sunlit_armature(obj):
                 select_object(obj)
         return {'FINISHED'}
 
@@ -1333,4 +1332,50 @@ class OLuminSL_SelectRigODiskLights(bpy.types.Operator):
             if is_sunlit_armature(ob):
                 to_select_list = to_select_list + get_sunlit_odisk_lights_from_armature(ob)
         select_objects(to_select_list)
+        return {'FINISHED'}
+
+class OLuminSL_PointRegularFromView(bpy.types.Operator):
+    """Given the regular sun number, align the selected Sunlit Rig's regular sun pointing direction with the current 3DView direction"""
+    bl_idname = "olumin_sl.point_regular_from_view"
+    bl_label = "Set Regular Direction from View"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        scn = context.scene
+        rv3d = context.region_data
+        view_dir = matrix_vector_mult(rv3d.view_rotation, Vector((0, 0, -1)))
+
+        regular_num = scn.OLuminSL_RegularNumPointFromView
+        for ob in context.selected_objects:
+            if is_sunlit_armature(ob):
+                point_target_bone = ob.pose.bones.get(any_prepend_name_num(SUNLIT_BONE_SUN_TARGET, regular_num))
+                if point_target_bone is None:
+                    continue
+                point_target_bone.location[0] = view_dir[0] * 2
+                point_target_bone.location[1] = view_dir[1] * 2
+                point_target_bone.location[2] = view_dir[2] * 2
+
+        return {'FINISHED'}
+
+class OLuminSL_PointODiskFromView(bpy.types.Operator):
+    """Given the ODisk number, align the selected Sunlit Rig's ODisk pointing direction with the current 3DView direction"""
+    bl_idname = "olumin_sl.point_odisk_from_view"
+    bl_label = "Set ODisk Direction from View"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        scn = context.scene
+        rv3d = context.region_data
+        view_dir = matrix_vector_mult(rv3d.view_rotation, Vector((0, 0, -1)))
+
+        odisk_num = scn.OLuminSL_ODiskNumPointFromView
+        for ob in context.selected_objects:
+            if is_sunlit_armature(ob):
+                point_target_bone = ob.pose.bones.get(any_prepend_name_num(SUNLIT_BONE_ODISK_TARGET, odisk_num))
+                if point_target_bone is None:
+                    continue
+                point_target_bone.location[0] = view_dir[0] * 2
+                point_target_bone.location[1] = view_dir[1] * 2
+                point_target_bone.location[2] = view_dir[2] * 2
+
         return {'FINISHED'}

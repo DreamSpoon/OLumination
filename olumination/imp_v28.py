@@ -57,8 +57,14 @@ def object_add_modifier_taper(obj, modifier_name, t_factor):
     d_mod.deform_axis = "Z"
     return d_mod
 
-def set_object_hide_view(obj, hide_state):
-    obj.hide_viewport = hide_state
+def set_object_hide_view(obj, hide_val):
+    obj.hide_set(hide_val)
+
+def get_object_hide_view(obj):
+    return obj.hide_viewport
+
+#def set_object_hide_view(obj, hide_state):
+#    obj.hide_viewport = hide_state
 
 def set_object_list_hide_view(obj_list, hide_state):
     for obj in obj_list:
@@ -86,9 +92,6 @@ def deselect_objects(ob_list):
 
 def scene_link_object(context, ob):
     context.scene.collection.objects.link(ob)
-
-def set_object_hide(obj, hide_val):
-    obj.hide_set(hide_val)
 
 # https://blender.stackexchange.com/questions/144928/how-to-list-all-collections-and-their-objects
 def get_all_objects_list():
