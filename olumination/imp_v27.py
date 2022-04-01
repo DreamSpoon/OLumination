@@ -97,6 +97,13 @@ def get_all_objects_list():
         a_list.append(bpy.context.scene.objects[i])
     return a_list
 
+def get_lights_from_selected(context):
+    obj_list = []
+    for obj in context.selected_objects:
+        if obj.type == "LAMP":
+            obj_list.append(obj)
+    return obj_list
+
 def set_light_color(light, color):
     bpy.data.lamps[light.data.name].color = color
 

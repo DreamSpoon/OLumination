@@ -43,7 +43,8 @@ from .sunlit_rig import (OLuminSL_CreateRig, OLuminSL_BakeSelectedSensors, OLumi
     OLuminSL_SetRigSunAngle, OLuminSL_SelectVisibleRigs, OLuminSL_SelectAllRigs, OLuminSL_SelectRigRegularSensors,
     OLuminSL_SelectRigODiskSensors, OLuminSL_SelectRigRegularLights, OLuminSL_SelectRigODiskLights,
     OLuminSL_PointRegularFromView, OLuminSL_PointODiskFromView)
-from .proxy_metric import (OLuminPM_CreateSimpleHumanProxy)
+from .proxy_metric import OLuminPM_CreateSimpleHumanProxy
+from .light_color import OLuminLC_SaturationPower
 
 AngularDiameterEnabled = False
 if bpy.app.version < (2,80,0):
@@ -92,6 +93,7 @@ class OLUMIN_PT_SunlitRigOther(bpy.types.Panel):
     bl_space_type = "VIEW_3D"
     bl_region_type = Region
     bl_category = "OLumin"
+    bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
         layout = self.layout
@@ -136,15 +138,31 @@ class OLUMIN_PT_SunlitRigOther(bpy.types.Panel):
         box.prop(scn, "OLuminSL_ODiskNumPointFromView")
         ##box.prop(scn, "OLuminSL_DeselectFirst")   # boolean, deselect objects before selecting desired objects
 
+class OLUMIN_PT_LightColor(bpy.types.Panel):
+    bl_label = "Light Color"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = Region
+    bl_category = "OLumin"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        layout = self.layout
+        scn = context.scene
+
+        box = layout.box()
+        box.label(text="Adjust Selected Lights")
+        box.operator("olumin_lc.saturation_power")
+        box.prop(scn, "OLuminLC_SatPower")
+
 class OLUMIN_PT_ProxyMetric(bpy.types.Panel):
     bl_label = "Proxy Metric"
     bl_space_type = "VIEW_3D"
     bl_region_type = Region
     bl_category = "OLumin"
+    bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
         layout = self.layout
-        scn = context.scene
 
         box = layout.box()
         box.label(text="Create Proxy Metric")
@@ -169,6 +187,8 @@ classes = [
     OLuminSL_SelectRigODiskLights,
     OLuminSL_PointRegularFromView,
     OLuminSL_PointODiskFromView,
+    OLUMIN_PT_LightColor,
+    OLuminLC_SaturationPower,
     OLUMIN_PT_ProxyMetric,
     OLuminPM_CreateSimpleHumanProxy,
 ]
@@ -256,6 +276,10 @@ def register_props():
         "sun for which pointing direction must be aligned with view center direction", default=0, min=0)
     bts.OLuminSL_ODiskNumPointFromView = bp.IntProperty(name="ODisk Index", description="Index of ODisk for which " +
         "pointing direction must be aligned with view center direction", default=0, min=0)
+
+    bts.OLuminLC_SatPower = bp.FloatProperty(name="Sat.Power", description="Power to which to raise saturation " +
+        "value of color of selected lights.\nIn Python terms, light.color.s = pow(light.color.s, Sat.Power)",
+        default=0.5, min=0.0)
 
 def unregister():
     for cls in classes:
