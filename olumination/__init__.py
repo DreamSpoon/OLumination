@@ -54,8 +54,8 @@ else:
     Region = "UI"
     AngularDiameterEnabled = True
 
-class OLUMIN_PT_SunlitRig(bpy.types.Panel):
-    bl_label = "Sunlit Rig"
+class OLUMIN_PT_SunlitRigCreate(bpy.types.Panel):
+    bl_label = "Sunlit Rig Create"
     bl_space_type = "VIEW_3D"
     bl_region_type = Region
     bl_category = "OLumin"
@@ -65,23 +65,39 @@ class OLUMIN_PT_SunlitRig(bpy.types.Panel):
         scn = context.scene
 
         box = layout.box()
+        box.prop(scn, "OLuminSL_CreateAdvancedOptions")
+        box = layout.box()
         box.label(text="Create Rig")
         box.operator("olumin_sl.create_sunlit_rig")
         box.prop(scn, "OLuminSL_Hemisphere")
         box.prop(scn, "OLuminSL_SunCount")
         box.prop(scn, "OLuminSL_SunEnergy")
         box.prop(scn, "OLuminSL_SunInitAngle")
-        box.prop(scn, "OLuminSL_SunImageWidth")
-        box.prop(scn, "OLuminSL_SunImageHeight")
-        box.prop(scn, "OLuminSL_SunBlindsLen")
+        if scn.OLuminSL_CreateAdvancedOptions:
+            box.prop(scn, "OLuminSL_SunImageWidth")
+            box.prop(scn, "OLuminSL_SunImageHeight")
+            box.prop(scn, "OLuminSL_SunBlindsLen")
         box.prop(scn, "OLuminSL_ODiskCount")
         box.prop(scn, "OLuminSL_ODiskIncludeSun")
         box.prop(scn, "OLuminSL_ODiskSunEnergy")
         box.prop(scn, "OLuminSL_ODiskSunInitAngle")
-        box.prop(scn, "OLuminSL_ODiskSunImageWidth")
-        box.prop(scn, "OLuminSL_ODiskSunImageHeight")
-        box.prop(scn, "OLuminSL_ODiskSunBlindsLen")
-        box.prop(scn, "OLuminSL_ODiskAddTaperDriver")
+        if scn.OLuminSL_CreateAdvancedOptions:
+            box.prop(scn, "OLuminSL_ODiskSunImageWidth")
+            box.prop(scn, "OLuminSL_ODiskSunImageHeight")
+            box.prop(scn, "OLuminSL_ODiskSunBlindsLen")
+            box.prop(scn, "OLuminSL_ODiskAddTaperDriver")
+
+class OLUMIN_PT_SunlitRigOther(bpy.types.Panel):
+    bl_label = "Sunlit Rig Other"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = Region
+    bl_category = "OLumin"
+
+    def draw(self, context):
+        layout = self.layout
+        scn = context.scene
+        box = layout.box()
+        box.prop(scn, "OLuminSL_OtherAdvancedOptions")
         box = layout.box()
         box.label(text="Rig Sensor Input")
         box.operator("olumin_sl.bake_selected_sensors")
@@ -94,10 +110,11 @@ class OLUMIN_PT_SunlitRig(bpy.types.Panel):
         box.operator("olumin_sl.select_sensors_to_sun_color")
         box.operator("olumin_sl.rig_sensors_to_sun_color")
         box.prop(scn, "OLuminSL_KeyframeColor")
-        box.prop(scn, "OLuminSL_SensorSampleWidthPct")
-        box.prop(scn, "OLuminSL_SensorSampleHeightPct")
-        box.prop(scn, "OLuminSL_ODiskSensorSampleWidthPct")
-        box.prop(scn, "OLuminSL_ODiskSensorSampleHeightPct")
+        if scn.OLuminSL_OtherAdvancedOptions:
+            box.prop(scn, "OLuminSL_SensorSampleWidthPct")
+            box.prop(scn, "OLuminSL_SensorSampleHeightPct")
+            box.prop(scn, "OLuminSL_ODiskSensorSampleWidthPct")
+            box.prop(scn, "OLuminSL_ODiskSensorSampleHeightPct")
         if AngularDiameterEnabled:
             box.operator("olumin_sl.select_blinds_angle_to_sun_angle")
             box.operator("olumin_sl.rig_blinds_angle_to_sun_angle")
@@ -134,7 +151,8 @@ class OLUMIN_PT_ProxyMetric(bpy.types.Panel):
         box.operator("olumin_pm.create_proxy_metric_simple_human")
 
 classes = [
-    OLUMIN_PT_SunlitRig,
+    OLUMIN_PT_SunlitRigCreate,
+    OLUMIN_PT_SunlitRigOther,
     OLuminSL_CreateRig,
     OLuminSL_BakeSelectedSensors,
     OLuminSL_BakeRigSensors,
@@ -164,6 +182,9 @@ def register():
 def register_props():
     bts = bpy.types.Scene
     bp = bpy.props
+
+    bts.OLuminSL_CreateAdvancedOptions = bp.BoolProperty(name="Advanced Options", description="Show advanced options " +
+        "for Sunlig Rig Create panel", default=False)
 
     bts.OLuminSL_Hemisphere = bp.BoolProperty(name="Hemisphere", description="Create hemisphere Sunlit Rig to " +
         "capture one half of the environment (360d of longitude, 90d of latitiude)", default=True)
@@ -201,6 +222,9 @@ def register_props():
         "Occluding Disk blinds so that scaling the Occluding Disk will taper the ODisk blinds properly. The " +
         "drawback to enabling this this option is that it requires 'Reload Trusted' or 'Make Trusted' when loading .Blend " +
         "files in some versions of Blender", default=True)
+
+    bts.OLuminSL_OtherAdvancedOptions = bp.BoolProperty(name="Advanced Options", description="Show advanced options " +
+        "for Sunlig Rig Other panel", default=False)
 
     bts.OLuminSL_BakeSamples = bp.IntProperty(name="Custom Bake Samples", description="Render sample value to use " +
         "while baking sensor images only. Cycles render sample count is temporarily changed during sensor image bake",

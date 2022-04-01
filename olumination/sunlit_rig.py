@@ -884,21 +884,38 @@ def bake_sunlit_sensors(context, sensors, sensor_bake_samples, lights_to_hide):
 
 def bake_select_sunlit_sensors(context, sensor_bake_samples, hide_all_lights):
     if hide_all_lights:
-        lights = get_sunlit_suns_from_all()
+        lights = get_all_lights()
     else:
         lights = get_sunlit_suns_from_selected(context)
     sensors = get_sunlit_sensors_from_selected(context)
-    bake_sunlit_sensors(context, sensors, sensor_bake_samples, lights)
+    # "hidden from render" meshes will cause error if baked, so ignore them - and raise warning
+    vis_sensors = []
+    warnings = []
+    for s in sensors:
+        if s.hide_render:
+            warnings.append("Sunlit Image Sensor Mesh not baked, make mesh 'render visible' before baking, mesh named: " + s.name)
+        else:
+            vis_sensors.append(s)
+    bake_sunlit_sensors(context, vis_sensors, sensor_bake_samples, lights)
+    return warnings
 
 def bake_sunlit_armature_list_sensors(context, sensor_bake_samples, hide_all_lights, armature_list):
     if hide_all_lights:
-        lights = get_sunlit_suns_from_all()
+        lights = get_all_lights()
     else:
         lights = get_sunlit_suns_from_selected(context)
     sensors = []
     for armature in armature_list:
         sensors = sensors + get_sunlit_regular_sensors_from_armature(armature) + get_sunlit_odisk_sensors_from_armature(armature)
+    vis_sensors = []
+    warnings = []
+    for s in sensors:
+        if s.hide_render:
+            warnings.append("Sunlit Image Sensor Mesh not baked, make mesh 'render visible' before baking, mesh named: " + s.name)
+        else:
+            vis_sensors.append(s)
     bake_sunlit_sensors(context, sensors, sensor_bake_samples, lights)
+    return warnings
 
 def hide_render_lights(new_hide_state, lights):
     hide_light_data = {}
@@ -1077,16 +1094,21 @@ def get_sunlit_suns_from_selected(context):
 def get_sunlit_sensors_from_selected(context):
     return get_sunlit_objects_from_selected(context, SUNLIT_SENSOR_PLANE_PREPEND) + get_sunlit_objects_from_selected(context, SUNLIT_ODISK_PREPEND)
 
-def get_sunlit_objects_from_all(name_prepend_str):
-    obj_list = []
-    # get lights from all objects list, by name - where name contains the light name prepend
-    for ob in bpy.data.objects:
-        if ob.name.startswith(name_prepend_str):
-            obj_list.append(ob)
-    return obj_list
+#def get_sunlit_objects_from_all(name_prepend_str):
+#    obj_list = []
+#    # get lights from all objects list, by name - where name contains the light name prepend
+#    for obj in bpy.data.objects:
+#        if obj.name.startswith(name_prepend_str):
+#            obj_list.append(obj)
+#    return obj_list
 
-def get_sunlit_suns_from_all():
-    return get_sunlit_objects_from_all(SUNLIT_SUN_PREPEND) + get_sunlit_objects_from_all(SUNLIT_ODISK_SUN_PREPEND)
+def get_all_lights():
+    #return get_sunlit_objects_from_all(SUNLIT_SUN_PREPEND) + get_sunlit_objects_from_all(SUNLIT_ODISK_SUN_PREPEND)
+    obj_list = []
+    for obj in bpy.data.objects:
+        if obj.type == "LIGHT":
+            obj_list.append(obj)
+    return obj_list
 
 def get_sunlit_objects_from_armature(armature, bone_name, obj_name_prepend):
     total_obj_list = []
@@ -1168,7 +1190,10 @@ class OLuminSL_BakeSelectedSensors(bpy.types.Operator):
         if scn.render.engine != "CYCLES":
             self.report({'ERROR'}, "Change render engine to CYCLES, and try again.")
             return {'CANCELLED'}
-        bake_select_sunlit_sensors(context, scn.OLuminSL_BakeSamples, scn.OLuminSL_BakeHideAllLights)
+        warn_list = bake_select_sunlit_sensors(context, scn.OLuminSL_BakeSamples, scn.OLuminSL_BakeHideAllLights)
+        if len(warn_list) == 0:
+            for warn in warn_list:
+                self.report({'WARNING'}, warn)
         return {'FINISHED'}
 
 class OLuminSL_BakeRigSensors(bpy.types.Operator):
@@ -1187,11 +1212,16 @@ class OLuminSL_BakeRigSensors(bpy.types.Operator):
         for ob in context.selected_objects:
             if is_sunlit_armature(ob):
                 sunlit_arms.append(ob)
-        bake_sunlit_armature_list_sensors(context, scn.OLuminSL_BakeSamples, scn.OLuminSL_BakeHideAllLights, sunlit_arms)
+        warn_list = bake_sunlit_armature_list_sensors(context, scn.OLuminSL_BakeSamples, scn.OLuminSL_BakeHideAllLights, sunlit_arms)
+        if len(warn_list) == 0:
+            for warn in warn_list:
+                self.report({'WARNING'}, warn)
         return {'FINISHED'}
 
 class OLuminSL_SensorImagePack(bpy.types.Operator):
-    """Pack ALL (not just selected sensors) sensor images to current .Blend file"""
+    """Pack ALL (not just selected sensors) sensor images to current Blend file. Use this if sensor images are \
+    changed, e.g. use this after baking sensor images. Changes to sensor images are lost when exiting Blender if \
+    changes are not packed"""
     bl_idname = "olumin_sl.image_pack"
     bl_label = "Pack Sensor Images"
     bl_options = {'REGISTER', 'UNDO'}

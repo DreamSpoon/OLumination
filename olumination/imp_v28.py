@@ -18,6 +18,7 @@
 
 import bpy
 
+# this function also works to multiply Quaternion * Vector
 def matrix_vector_mult(m, v):
     return m @ v
 
@@ -63,9 +64,6 @@ def set_object_hide_view(obj, hide_val):
 def get_object_hide_view(obj):
     return obj.hide_viewport
 
-#def set_object_hide_view(obj, hide_state):
-#    obj.hide_viewport = hide_state
-
 def set_object_list_hide_view(obj_list, hide_state):
     for obj in obj_list:
         set_object_hide_view(obj, hide_state)
@@ -93,7 +91,6 @@ def deselect_objects(ob_list):
 def scene_link_object(context, ob):
     context.scene.collection.objects.link(ob)
 
-# https://blender.stackexchange.com/questions/144928/how-to-list-all-collections-and-their-objects
 def get_all_objects_list():
     a_list = []
     for c in range(len(bpy.data.collections)):
@@ -104,20 +101,10 @@ def get_all_objects_list():
 def set_light_color(light, color):
     bpy.data.lights[light.data.name].color = color
 
-# TODO finish this
-def keyframe_light_color(light):
-    print("TODO: Add keyframe to light color of light " + light.name)
-
-# TODO finish this
-def set_light_angular_diameter(light, lit_max_angle):
-    print("TODO: Set light angular diameter of light " + light.name)
-
-# TODO finish this
-def keyframe_light_angular_diameter(light):
-    print("TODO: Add keyframe to angular diameter of light " + light.name)
-
 def set_mat_diffuse_color(mat, mat_diffuse_RGBA):
     mat.diffuse_color = (mat_diffuse_RGBA[0], mat_diffuse_RGBA[1], mat_diffuse_RGBA[2], mat_diffuse_RGBA[3])
+    mat.specular_intensity = 0
+    mat.roughness = 0
 
 def keyframe_light_color(light_obj):
     light_obj.data.keyframe_insert("color")

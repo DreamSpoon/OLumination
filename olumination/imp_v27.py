@@ -18,6 +18,7 @@
 
 import bpy
 
+# this function also works to multiply Quaternion * Vector
 def matrix_vector_mult(m, v):
     return m * v
 
@@ -99,31 +100,19 @@ def get_all_objects_list():
 def set_light_color(light, color):
     bpy.data.lamps[light.data.name].color = color
 
-# TODO finish this
-def keyframe_light_color(light):
-    print("TODO: Add keyframe to light color of light " + light.name)
-
-# TODO finish this
-def set_light_angular_diameter(light, lit_max_angle):
-    print("TODO: Set light angular diameter of light " + light.name)
-
-# TODO finish this
-def keyframe_light_angular_diameter(light):
-    print("TODO: Add keyframe to angular diameter of light " + light.name)
-
-def set_mat_diffuse_color(mat, mat_diffuse_RGBA):
-    mat.diffuse_color = (mat_diffuse_RGBA[0], mat_diffuse_RGBA[1], mat_diffuse_RGBA[2])
-
 def keyframe_light_color(light_obj):
     light_obj.data.keyframe_insert("color", 0)
     light_obj.data.keyframe_insert("color", 1)
     light_obj.data.keyframe_insert("color", 2)
 
-def set_light_angular_diameter(light, angular_diameter):
-    print()
+def set_light_angular_diameter(light, lit_max_angle):
+    print("Sun light angular diameter not supported in Blender 2.79")
 
-def keyframe_light_angular_diameter(light_obj):
-    print()
+def keyframe_light_angular_diameter(light):
+    print("Sun light angular diameter not supported in Blender 2.79")
+
+def set_mat_diffuse_color(mat, mat_diffuse_RGBA):
+    mat.diffuse_color = (mat_diffuse_RGBA[0], mat_diffuse_RGBA[1], mat_diffuse_RGBA[2])
 
 def image_pack_image(img):
     img.pack(as_png=True)
