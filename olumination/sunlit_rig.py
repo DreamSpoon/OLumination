@@ -1170,7 +1170,12 @@ class OLuminSL_CreateRig(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
+        # materials creation errors occur in Blender Render and
         scn = context.scene
+        if bpy.app.version < (2,80,0) and (scn.render.engine == "BLENDER_RENDER" or scn.render.engine == "BLENDER_GAME"):
+            self.report({'ERROR'}, "Cannot create Sunlig Rig in Blender Render or Blender Game render modes, change " +
+                "render engine to CYCLES and try again.")
+            return {'CANCELLED'}
         create_sunlit_rig(context, scn.OLuminSL_Hemisphere, scn.OLuminSL_SunCount, 4, scn.OLuminSL_ODiskCount,
             scn.OLuminSL_ODiskIncludeSun, scn.OLuminSL_SunEnergy, scn.OLuminSL_SunInitAngle,
             scn.OLuminSL_ODiskSunEnergy, scn.OLuminSL_ODiskSunInitAngle, scn.OLuminSL_ODiskAddTaperDriver,

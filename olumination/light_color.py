@@ -31,10 +31,8 @@ class OLuminLC_SaturationPower(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        print("do saturation power")
         sel_lights = get_lights_from_selected(context)
         for light in sel_lights:
-            print("select light old color s =" + str(light.data.color.s))
             light.data.color.s = pow(light.data.color.s, context.scene.OLuminLC_SatPower)
 
         return {'FINISHED'}

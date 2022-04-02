@@ -45,6 +45,7 @@ from .sunlit_rig import (OLuminSL_CreateRig, OLuminSL_BakeSelectedSensors, OLumi
     OLuminSL_PointRegularFromView, OLuminSL_PointODiskFromView)
 from .proxy_metric import OLuminPM_CreateSimpleHumanProxy
 from .light_color import OLuminLC_SaturationPower
+from .light_energy import *
 
 AngularDiameterEnabled = False
 if bpy.app.version < (2,80,0):
@@ -139,7 +140,7 @@ class OLUMIN_PT_SunlitRigOther(bpy.types.Panel):
         ##box.prop(scn, "OLuminSL_DeselectFirst")   # boolean, deselect objects before selecting desired objects
 
 class OLUMIN_PT_LightColor(bpy.types.Panel):
-    bl_label = "Light Color"
+    bl_label = "EEVEE Light Color"
     bl_space_type = "VIEW_3D"
     bl_region_type = Region
     bl_category = "OLumin"
@@ -153,6 +154,23 @@ class OLUMIN_PT_LightColor(bpy.types.Panel):
         box.label(text="Adjust Selected Lights")
         box.operator("olumin_lc.saturation_power")
         box.prop(scn, "OLuminLC_SatPower")
+
+class OLUMIN_PT_LightEnergy(bpy.types.Panel):
+    bl_label = "EEVEE Light Energy"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = Region
+    bl_category = "OLumin"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        layout = self.layout
+        scn = context.scene
+
+        box = layout.box()
+        box.label(text="Adjust Selected Lights")
+        box.operator("olumin_le.math_light_energy")
+        box.prop(scn, "OLuminLE_MathFunction")
+        box.prop(scn, "OLuminLE_MathInputValue")
 
 class OLUMIN_PT_ProxyMetric(bpy.types.Panel):
     bl_label = "Proxy Metric"
@@ -189,6 +207,8 @@ classes = [
     OLuminSL_PointODiskFromView,
     OLUMIN_PT_LightColor,
     OLuminLC_SaturationPower,
+    OLUMIN_PT_LightEnergy,
+    OLuminLE_MathLightEnergy,
     OLUMIN_PT_ProxyMetric,
     OLuminPM_CreateSimpleHumanProxy,
 ]
@@ -277,9 +297,24 @@ def register_props():
     bts.OLuminSL_ODiskNumPointFromView = bp.IntProperty(name="ODisk Index", description="Index of ODisk for which " +
         "pointing direction must be aligned with view center direction", default=0, min=0)
 
-    bts.OLuminLC_SatPower = bp.FloatProperty(name="Sat.Power", description="Power to which to raise saturation " +
-        "value of color of selected lights.\nIn Python terms, light.color.s = pow(light.color.s, Sat.Power)",
+    bts.OLuminLC_SatPower = bp.FloatProperty(name="Sat.Power", description="The saturation amount, in the " +
+        "color of the selected lights, will be raised to the power of this number color of selected lights.\nIn " +
+        "Python terms, light.color.s = pow(light.color.s, Sat.Power)",
         default=0.5, min=0.0)
+
+    bts.OLuminLE_MathFunction = bp.EnumProperty(
+        items = [
+            (LE_MATH_ADD, "Add", "light.energy + input.value"),
+            (LE_MATH_MULTIPLY, "Multiply", "light.energy * input.value"),
+            (LE_MATH_POWER, "Power", "'light.energy' is raised to the power 'input.value', or in Python math: pow(light.energy, input.value)"),
+            (LE_MATH_SET, "Set", "light.energy = input.value"),
+        ],
+        name = "Math Function",
+        description = "Math function to apply with selected light(s) energy, and with math Input Value, to selected light(s) energy",
+        default = 'MULTIPLY')
+    bts.OLuminLE_MathInputValue = bp.FloatProperty(name="Input Value", description="The energy value of the " +
+        "selected light(s) will be math'ed with this number, according to Math Function",
+        default=1.0)
 
 def unregister():
     for cls in classes:
