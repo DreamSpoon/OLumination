@@ -236,19 +236,9 @@ SUNLIT_FULL_SUN_POINTDIR_LIST = {
 
 SUNLIT_ODISK_POINT_AT_RADIUS = 3.0
 
-#SUNLIT_SUN_BLINDS_LENGTH = 15
-#SUNLIT_ODISK_BLINDS_LENGTH = 1
-
 SUNLIT_BLINDS_MAT_NAME = "SunlitBlindsMat"
 SUNLIT_BAKE_MAT_NAME = "SunlitBakeMat"
 SUNLIT_BAKE_IMG_NAME = "SunlitBakeImage"
-# size of image to bake
-SUNLIT_BAKE_IMG_WIDTH = 8
-SUNLIT_BAKE_IMG_HEIGHT = 8
-# size of sample to take from image that was baked
-SUNLIT_BAKE_IMG_SAMPLE_W = 4
-SUNLIT_BAKE_IMG_SAMPLE_H = 4
-
 
 def set_object_hide_render(ob, hide_state):
     ob.hide_render = hide_state
@@ -544,36 +534,36 @@ def create_widget_circle(context):
 
 # "rig" includes armature object, widget objects, and objects parented to the armature (e.g. meshes, lights)
 def create_sunlit_rig(context, hemisphere_only, num_suns, num_sphere_subdiv, num_occluding_disks, odisk_include_sun,
-        default_sun_energy, default_sun_angle, default_odisk_sun_energy, default_odisk_sun_angle, add_odisk_taper_driver,
+        default_sun_energy, default_sun_angle, default_odisk_sun_energy, default_odisk_sun_angle, allow_drivers,
         sun_sensor_image_width, sun_sensor_image_height, odisk_sensor_image_width, odisk_sensor_image_height,
         sun_blinds_len, odisk_blinds_len):
-    # create sunlit_rig to combine/control objects
-    sunlit_rig, sphere_bone_name, sun_bone_name_tuples, odisk_bone_name_tuples = create_sunlit_armature(context,
+    # create sl_armature to combine/control objects
+    sl_armature, sphere_bone_name, sun_bone_name_tuples, odisk_bone_name_tuples = create_sunlit_armature(context,
         num_suns, num_occluding_disks)
 
     # create base sphere, with which sun blinds planes will intersect
     base_sphere = create_object_icosphere(obj_prepend_name_num(SUNLIT_BASE_SPHERE_PREPEND, 0), num_sphere_subdiv,
         SUNLIT_BASE_SPHERE_RADIUS, SUNLIT_BASE_SPHERE_OFFSET)
-    base_sphere.parent = sunlit_rig
+    base_sphere.parent = sl_armature
     base_sphere.parent_type = "BONE"
     base_sphere.parent_bone = sphere_bone_name
     # create "difference cubes" (diff cubes for short) that will be used in booleans to carve out "blinds planes"
-    diff_cubes = create_sunlit_diff_cubes(context, sunlit_rig, sun_bone_name_tuples, SUNLIT_DCUBE_PREPEND)
-    sensor_planes = create_sunlit_planes(context, sunlit_rig, sun_bone_name_tuples, SUNLIT_SENSOR_PLANE_PREPEND,
+    diff_cubes_list = create_sunlit_diff_cubes(context, sl_armature, sun_bone_name_tuples, SUNLIT_DCUBE_PREPEND)
+    sensor_planes = create_sunlit_planes(context, sl_armature, sun_bone_name_tuples, SUNLIT_SENSOR_PLANE_PREPEND,
         SUNLIT_SENSOR_PLANE_RADIUS, SUNLIT_SENSOR_OFFSET, False)
     for plane in sensor_planes:
         create_sensor_material_on_obj(plane, sun_sensor_image_width, sun_sensor_image_height)
-    create_sun_lights(context, sunlit_rig, sun_bone_name_tuples, SUNLIT_SUN_PREPEND,
+    create_sun_lights(sl_armature, sun_bone_name_tuples, SUNLIT_SUN_PREPEND,
         SUNLIT_SUN_OFFSET, default_sun_energy, default_sun_angle)
 
-    # create sun_blinds
-    sun_blinds = create_sunlit_planes(context, sunlit_rig, sun_bone_name_tuples, SUNLIT_SUN_BLINDS_PREPEND,
+    # create sun_blinds_list
+    sun_blinds_list = create_sunlit_planes(context, sl_armature, sun_bone_name_tuples, SUNLIT_SUN_BLINDS_PREPEND,
         SUNLIT_SUN_BLINDS_PLANE_RADIUS, SUNLIT_SUN_BLINDS_PLANE_OFFSET, True)
-    add_blinds_material_to_obj_list(sun_blinds)
-    # create sun_blinds' object modifiers
-    create_sphere_plane_booleans(base_sphere, sun_blinds)
-    create_plane_diff_cube_booleans(sun_blinds, diff_cubes)
-    add_extrude_bools_to_sun_blinds(sun_blinds, sun_blinds_len)
+    add_blinds_material_to_obj_list(sun_blinds_list)
+    # create sun_blinds_list' object modifiers
+    create_sphere_plane_booleans(base_sphere, sun_blinds_list)
+    create_plane_diff_cube_booleans(sun_blinds_list, diff_cubes_list)
+    add_extrude_bools_to_sun_blinds(sun_blinds_list, sl_armature, sun_blinds_len, allow_drivers)
 
     if num_suns > 0:
         if hemisphere_only:
@@ -590,32 +580,32 @@ def create_sunlit_rig(context, hemisphere_only, num_suns, num_sphere_subdiv, num
             else:
                 point_direction_list = get_fibonacci_sphere_points(num_suns, 2.0)
 
-        set_point_at_locations(context, sunlit_rig, sun_bone_name_tuples, point_direction_list,
+        set_point_at_locations(context, sl_armature, sun_bone_name_tuples, point_direction_list,
             SUNLIT_EXTRA_POINTDIR)
 
-        fix_diff_cube_bone_loc(context, sunlit_rig, sun_bone_name_tuples, SUNLIT_FIX_DIFF_CUBE_LOC)
+        fix_diff_cube_bone_loc(context, sl_armature, sun_bone_name_tuples, SUNLIT_FIX_DIFF_CUBE_LOC)
 
-    # The bone setups and parenting were done in worldspace with Z axis as the up axis, but inside the sunlit_rig the
+    # The bone setups and parenting were done in worldspace with Z axis as the up axis, but inside the sl_armature the
     # Y axis is the up axis - so fix it.
-    # deselect all, then select only the sunlit_rig and fix the rotation
+    # deselect all, then select only the sl_armature and fix the rotation
     #bpy.ops.object.select_all(action='DESELECT')
-    #set_active_object(context, sunlit_rig)
-    #select_object(sunlit_rig)
-    sunlit_rig.rotation_euler = (math.radians(270), 0, 0)
+    #set_active_object(context, sl_armature)
+    #select_object(sl_armature)
+    sl_armature.rotation_euler = (math.radians(270), 0, 0)
     #bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
 
     # hide objects that distract the user and/or should not be rendered
-    set_object_list_hide_view(diff_cubes, True)
-    set_object_list_hide_render(diff_cubes, True)
+    set_object_list_hide_view(diff_cubes_list, True)
+    set_object_list_hide_render(diff_cubes_list, True)
     set_object_hide_view(base_sphere, True)
     set_object_hide_render(base_sphere, True)
 
     # create occluding disks and set their default pointing directions
     if num_occluding_disks > 0:
-        create_occluding_disks(context, sunlit_rig, odisk_bone_name_tuples, odisk_include_sun,
-            default_odisk_sun_energy, default_odisk_sun_angle, add_odisk_taper_driver, odisk_sensor_image_width, odisk_sensor_image_height,
+        create_occluding_disks(context, sl_armature, odisk_bone_name_tuples, odisk_include_sun,
+            default_odisk_sun_energy, default_odisk_sun_angle, allow_drivers, odisk_sensor_image_width, odisk_sensor_image_height,
             odisk_blinds_len)
-        set_odisk_point_at_locations(context, sunlit_rig, odisk_bone_name_tuples)
+        set_odisk_point_at_locations(context, sl_armature, odisk_bone_name_tuples)
 
 def get_fibonacci_sphere_points(num_points, sphere_radius):
     points = []
@@ -665,7 +655,7 @@ def create_sunlit_diff_cubes(context, sl_arm, sun_bone_name_tuples, prepend_str)
 
     return diff_cubes
 
-def create_sun_lights(context, sl_arm, sun_bone_name_tuples, prepend_str, loc, sun_energy, sun_angle):
+def create_sun_lights(sl_arm, sun_bone_name_tuples, prepend_str, loc, sun_energy, sun_angle):
     lights = []
 
     c = 0
@@ -724,17 +714,23 @@ def create_plane_diff_cube_booleans(planes_obj_list, diff_cube_obj_list):
             dc = dc + 1
         p = p + 1
 
-def add_extrude_bools_to_sun_blinds(planes, sun_blinds_len):
-    for plane in planes:
+def add_extrude_bools_to_sun_blinds(blinds_plane_list, sl_armature, sun_blinds_len, allow_drivers):
+    c = 0
+    for plane in blinds_plane_list:
         w_mod = plane.modifiers.new(SUNLIT_MODNAME_B_WIRE, "WIREFRAME")
         w_mod.thickness = 0
 
         s_mod = plane.modifiers.new(SUNLIT_MODNAME_B_SOLID, "SOLIDIFY")
         s_mod.thickness = sun_blinds_len
-        #s_mod.offset = 0.85715
-        s_mod.offset = 1 - (4 / (3 * sun_blinds_len))
+        s_mod.offset = 1 - (2 / sun_blinds_len)
 
-        object_add_modifier_taper(plane, SUNLIT_MODNAME_B_SIMPDEF, 1.48 * sun_blinds_len)
+        bone_num =  get_rig_bone_num_for_obj(plane)
+        if allow_drivers:
+            add_regular_blinds_drivers(s_mod, sl_armature, any_prepend_name_num(SUNLIT_BONE_DIFF_CUBE, bone_num),
+                sun_blinds_len)
+
+        object_add_modifier_taper(plane, SUNLIT_MODNAME_B_SIMPDEF, sun_blinds_len)
+        c = c + 1
 
 def get_blinds_material():
     blinds_mat = bpy.data.materials.get(SUNLIT_BLINDS_MAT_NAME)
@@ -833,7 +829,7 @@ def create_occluding_disks(context, sl_arm, odisk_bone_name_tuples, odisk_includ
         s_mod.thickness = odisk_blinds_len
         d_mod = object_add_modifier_taper(odisk_blinds, SUNLIT_MODNAME_B_SIMPDEF, 0.052)
         if add_odisk_taper_driver:
-            add_odisk_blinds_taper_driver(d_mod, odisk, sl_arm, odisk_bone_name)
+            add_odisk_blinds_taper_driver(d_mod, sl_arm, odisk_bone_name, odisk_blinds_len)
 
         add_blinds_material_to_obj(odisk_blinds)
 
@@ -846,10 +842,19 @@ def create_occluding_disks(context, sl_arm, odisk_bone_name_tuples, odisk_includ
             odisk_sun.parent = sl_arm
             odisk_sun.parent_type = "BONE"
             odisk_sun.parent_bone = odisk_lit_adjust_bone_name
+            set_light_angular_diameter(odisk_sun, odisk_sun_angle)
 
         c = c + 1
 
-def add_odisk_blinds_taper_driver(source_modifier, odisk_sensor, armature, odisk_bone_name):
+def add_regular_blinds_drivers(solid_mod, armature, diff_cube_bone_name, blinds_length):
+    d = solid_mod.driver_add("thickness").driver
+    v1 = d.variables.new()
+    v1.name                 = "var1"
+    v1.targets[0].id        = armature
+    v1.targets[0].data_path = "pose.bones[\""+diff_cube_bone_name+"\"].location.y"
+    d.expression = str(blinds_length) + "  * (1 + " + v1.name+")"
+
+def add_odisk_blinds_taper_driver(source_modifier, armature, odisk_bone_name, odisk_blinds_len):
     d = source_modifier.driver_add("factor").driver
     v1 = d.variables.new()
     v1.name                 = "var1"
@@ -859,7 +864,8 @@ def add_odisk_blinds_taper_driver(source_modifier, odisk_sensor, armature, odisk
     v2.name                 = "var2"
     v2.targets[0].id        = armature
     v2.targets[0].data_path = "pose.bones[\""+odisk_bone_name+"\"].scale.y"
-    d.expression = "sqrt("+v1.name+" * "+v1.name+" + "+v2.name+" * "+v2.name+") * 0.03667"
+    # multiply by 11/300, verified this by scaling up the ODisk sensor bone
+    d.expression = "sqrt("+v1.name+" * "+v1.name+" + "+v2.name+" * "+v2.name+") * " + str(odisk_blinds_len * 11 / 300)
 
 def set_odisk_point_at_locations(context, sl_arm, odisk_bone_name_tuples):
     old_3dview_mode = context.object.mode
@@ -892,7 +898,7 @@ def bake_select_sunlit_sensors(context, sensor_bake_samples, hide_all_lights):
     vis_sensors = []
     warnings = []
     for s in sensors:
-        if s.hide_render:
+        if get_object_hide_render(s):
             warnings.append("Sunlit Image Sensor Mesh not baked, make mesh 'render visible' before baking, mesh named: " + s.name)
         else:
             vis_sensors.append(s)
@@ -910,7 +916,7 @@ def bake_sunlit_armature_list_sensors(context, sensor_bake_samples, hide_all_lig
     vis_sensors = []
     warnings = []
     for s in sensors:
-        if s.hide_render:
+        if get_object_hide_render(s):
             warnings.append("Sunlit Image Sensor Mesh not baked, make mesh 'render visible' before baking, mesh named: " + s.name)
         else:
             vis_sensors.append(s)
@@ -918,11 +924,13 @@ def bake_sunlit_armature_list_sensors(context, sensor_bake_samples, hide_all_lig
     return warnings
 
 def hide_render_lights(new_hide_state, lights):
-    hide_light_data = {}
+    hide_light_data = []
 
     # save old states
     for lit in lights:
-        hide_light_data[lit.name] = get_object_hide_render(lit)
+        # append a tuple to store the old light object and it's state
+        hide_light_data.append((lit, get_object_hide_render(lit)))
+        # hide the light object from render pass
         set_object_hide_render(lit, new_hide_state)
 
     # return old states of lights
@@ -930,8 +938,8 @@ def hide_render_lights(new_hide_state, lights):
 
 def undo_hide_render_lights(hide_light_data):
     # restore old states
-    for lit_name, lit_hide_render_state in hide_light_data.items():
-        bpy.data.objects[lit_name].hide_render = lit_hide_render_state
+    for (lit, lit_hide_render_state) in hide_light_data:
+        set_object_hide_render(lit, lit_hide_render_state)
 
 # Important Note:
 # If a HDRI is being baked to Sun lights, then all other light sources will adversely affect the bake to image process.
@@ -1102,14 +1110,6 @@ def get_sunlit_sensors_from_selected(context):
 #            obj_list.append(obj)
 #    return obj_list
 
-def get_all_lights():
-    #return get_sunlit_objects_from_all(SUNLIT_SUN_PREPEND) + get_sunlit_objects_from_all(SUNLIT_ODISK_SUN_PREPEND)
-    obj_list = []
-    for obj in bpy.data.objects:
-        if obj.type == "LIGHT":
-            obj_list.append(obj)
-    return obj_list
-
 def get_sunlit_objects_from_armature(armature, bone_name, obj_name_prepend):
     total_obj_list = []
     for bone in armature.data.bones:
@@ -1176,9 +1176,9 @@ class OLuminSL_CreateRig(bpy.types.Operator):
             self.report({'ERROR'}, "Cannot create Sunlig Rig in Blender Render or Blender Game render modes, change " +
                 "render engine to CYCLES and try again.")
             return {'CANCELLED'}
-        create_sunlit_rig(context, scn.OLuminSL_Hemisphere, scn.OLuminSL_SunCount, 4, scn.OLuminSL_ODiskCount,
-            scn.OLuminSL_ODiskIncludeSun, scn.OLuminSL_SunEnergy, scn.OLuminSL_SunInitAngle,
-            scn.OLuminSL_ODiskSunEnergy, scn.OLuminSL_ODiskSunInitAngle, scn.OLuminSL_ODiskAddTaperDriver,
+        create_sunlit_rig(context, scn.OLuminSL_Hemisphere, scn.OLuminSL_SunCount, scn.OLuminSL_BaseSphereSubdiv,
+            scn.OLuminSL_ODiskCount, scn.OLuminSL_ODiskIncludeSun, scn.OLuminSL_SunEnergy, scn.OLuminSL_SunInitAngle,
+            scn.OLuminSL_ODiskSunEnergy, scn.OLuminSL_ODiskSunInitAngle, scn.OLuminSL_AllowDrivers,
             scn.OLuminSL_SunImageWidth, scn.OLuminSL_SunImageHeight, scn.OLuminSL_ODiskSunImageWidth,
             scn.OLuminSL_ODiskSunImageHeight, scn.OLuminSL_SunBlindsLen, scn.OLuminSL_ODiskSunBlindsLen)
         return {'FINISHED'}

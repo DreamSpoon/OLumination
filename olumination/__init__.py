@@ -71,6 +71,8 @@ class OLUMIN_PT_SunlitRigCreate(bpy.types.Panel):
         box = layout.box()
         box.label(text="Create Rig")
         box.operator("olumin_sl.create_sunlit_rig")
+        if scn.OLuminSL_CreateAdvancedOptions:
+            box.prop(scn, "OLuminSL_BaseSphereSubdiv")
         box.prop(scn, "OLuminSL_Hemisphere")
         box.prop(scn, "OLuminSL_SunCount")
         box.prop(scn, "OLuminSL_SunEnergy")
@@ -87,7 +89,7 @@ class OLUMIN_PT_SunlitRigCreate(bpy.types.Panel):
             box.prop(scn, "OLuminSL_ODiskSunImageWidth")
             box.prop(scn, "OLuminSL_ODiskSunImageHeight")
             box.prop(scn, "OLuminSL_ODiskSunBlindsLen")
-            box.prop(scn, "OLuminSL_ODiskAddTaperDriver")
+            box.prop(scn, "OLuminSL_AllowDrivers")
 
 class OLUMIN_PT_SunlitRigOther(bpy.types.Panel):
     bl_label = "Sunlit Rig Other"
@@ -225,6 +227,14 @@ def register_props():
 
     bts.OLuminSL_CreateAdvancedOptions = bp.BoolProperty(name="Advanced Options", description="Show advanced options " +
         "for Sunlig Rig Create panel", default=False)
+    bts.OLuminSL_AllowDrivers = bp.BoolProperty(name="Allow Drivers", description="Allow drivers to be used for " +
+        "automatically adjusting object Modifier fields. The drawback to enabling this this option is that it " +
+        "requires 'Reload Trusted' or 'Make Trusted' when loading .Blend files in some versions of Blender",
+        default=True)
+
+    bts.OLuminSL_BaseSphereSubdiv = bp.IntProperty(name="Base Subdiv", description="Base icosphere subidivision " +
+        "count. The 'base sphere' used to project the Regular sun blinds is an icosphere object, this is the " +
+        "icosphere subdivision count", default=4, min=1)
 
     bts.OLuminSL_Hemisphere = bp.BoolProperty(name="Hemisphere", description="Create hemisphere Sunlit Rig to " +
         "capture one half of the environment (360d of longitude, 90d of latitiude)", default=True)
@@ -258,10 +268,6 @@ def register_props():
     bts.OLuminSL_ODiskSunBlindsLen = bp.FloatProperty(name="ODisk Sun Blinds Length", description="Length (in meters)" +
         " of dark Occluding Disk (ODisk) sun blinds used when baking sensor images", default=1.0, min=0.0,
         subtype="DISTANCE")
-    bts.OLuminSL_ODiskAddTaperDriver = bp.BoolProperty(name="ODisk Taper Driver", description="Add taper driver to " +
-        "Occluding Disk blinds so that scaling the Occluding Disk will taper the ODisk blinds properly. The " +
-        "drawback to enabling this this option is that it requires 'Reload Trusted' or 'Make Trusted' when loading .Blend " +
-        "files in some versions of Blender", default=True)
 
     bts.OLuminSL_OtherAdvancedOptions = bp.BoolProperty(name="Advanced Options", description="Show advanced options " +
         "for Sunlig Rig Other panel", default=False)
