@@ -39,7 +39,8 @@ def create_simple_human_metarig(context, rig_name):
     return new_obj
 
 class OLuminPM_CreateSimpleHumanProxy(bpy.types.Operator):
-    """Select the occluding disk sun lights of the currently selected Sunlit Rig(s)"""
+    """Use human rig (Rigify addon) to estimate distance to ground plane, sizes of objects, etc. in HDRIs. """ \
+    """Proxy Metric can be used to detect/analyze geometry by comparing human size to apparent size of image object"""
     bl_idname = "olumin_pm.create_proxy_metric_simple_human"
     bl_label = "Simple Human Proxy"
     bl_options = {'REGISTER', 'UNDO'}

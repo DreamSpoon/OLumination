@@ -38,13 +38,14 @@ bl_info = {
 
 import math
 import bpy
+
 from .sunlit_rig import (OLuminSL_CreateRig, OLuminSL_BakeSelectedSensors, OLuminSL_BakeRigSensors,
     OLuminSL_SensorImagePack, OLuminSL_SetSelectSunColor, OLuminSL_SetRigSunColor, OLuminSL_SetSelectSunAngle,
     OLuminSL_SetRigSunAngle, OLuminSL_SelectVisibleRigs, OLuminSL_SelectAllRigs, OLuminSL_SelectRigRegularSensors,
     OLuminSL_SelectRigODiskSensors, OLuminSL_SelectRigRegularLights, OLuminSL_SelectRigODiskLights,
     OLuminSL_PointRegularFromView, OLuminSL_PointODiskFromView)
 from .proxy_metric import OLuminPM_CreateSimpleHumanProxy
-from .light_color import OLuminLC_SaturationPower
+from .light_color import OLuminLC_ColorMath
 from .light_energy import *
 from .world_envo import OLuminWE_MobileBackground
 
@@ -154,8 +155,10 @@ class OLUMIN_PT_LightColor(bpy.types.Panel):
 
         box = layout.box()
         box.label(text="Adjust Selected Lights")
-        box.operator("olumin_lc.saturation_power")
-        box.prop(scn, "OLuminLC_SatPower")
+        box.operator("olumin_lc.math_light_color")
+        box.prop(scn, "OLuminLC_MathFunction")
+        box.prop(scn, "OLuminLC_MathColorComponent")
+        box.prop(scn, "OLuminLC_MathInputValue")
 
 class OLUMIN_PT_LightEnergy(bpy.types.Panel):
     bl_label = "EEVEE Light Energy"
@@ -221,7 +224,7 @@ classes = [
     OLuminSL_PointRegularFromView,
     OLuminSL_PointODiskFromView,
     OLUMIN_PT_LightColor,
-    OLuminLC_SaturationPower,
+    OLuminLC_ColorMath,
     OLUMIN_PT_LightEnergy,
     OLuminLE_MathLightEnergy,
     OLUMIN_PT_ProxyMetric,
@@ -318,24 +321,48 @@ def register_props():
     bts.OLuminSL_ODiskNumPointFromView = bp.IntProperty(name="ODisk Index", description="Index of ODisk for which " +
         "pointing direction must be aligned with view center direction", default=0, min=0)
 
-    bts.OLuminLC_SatPower = bp.FloatProperty(name="Sat.Power", description="The saturation amount, in the " +
-        "color of the selected lights, will be raised to the power of this number color of selected lights.\nIn " +
-        "Python terms, light.color.s = pow(light.color.s, Sat.Power)",
-        default=0.5, min=0.0)
+    bts.OLuminLC_MathFunction = bp.EnumProperty(
+        items = [
+            ("ADD", "Add", "light.color.component = light.color.component + input.value"),
+            ("MULTIPLY", "Multiply", "light.color.component = light.color.component * input.value"),
+            ("POWER", "Power", "'light.color.component' is raised to the power 'input.value', or in Python math: " +
+                 "pow(light.color.component, input.value)"),
+            ("SET", "Set", "light.color.component = input.value"),
+        ],
+        name = "Math Function",
+        description = "Math function to apply with selected light(s) color component, and with math Input Value, " +
+            "to selected light(s) color component",
+        default = 'POWER')
+    bts.OLuminLC_MathColorComponent = bp.EnumProperty(
+        # TODO: include groups of components, e.g. RG, RB, GB
+        items = [
+            ("R", "Red", "math_operation(light.color.r, input.value)"),
+            ("G", "Green", "math_operation(light.color.g, input.value)"),
+            ("B", "Blue", "math_operation(light.color.b, input.value)"),
+            ("H", "Hue", "math_operation(light.color.h, input.value)"),
+            ("S", "Saturation", "math_operation(light.color.s, input.value)"),
+            ("V", "Value", "math_operation(light.color.v, input.value)"),
+        ],
+        name = "Color Component",
+        description = "Color component of selected light(s) to use with math function",
+        default = 'S')
+    bts.OLuminLC_MathInputValue = bp.FloatProperty(name="Input Value", description="The color component of the " +
+        "selected light(s) will be math'ed with this number, according to Math Function", default=0.5)
 
     bts.OLuminLE_MathFunction = bp.EnumProperty(
         items = [
-            (LE_MATH_ADD, "Add", "light.energy + input.value"),
-            (LE_MATH_MULTIPLY, "Multiply", "light.energy * input.value"),
-            (LE_MATH_POWER, "Power", "'light.energy' is raised to the power 'input.value', or in Python math: pow(light.energy, input.value)"),
-            (LE_MATH_SET, "Set", "light.energy = input.value"),
+            ("ADD", "Add", "light.energy = light.energy + input.value"),
+            ("MULTIPLY", "Multiply", "light.energy = light.energy * input.value"),
+            ("POWER", "Power", "'light.energy' is raised to the power 'input.value', or in Python math: " +
+                 "pow(light.energy, input.value)"),
+            ("SET", "Set", "light.energy = input.value"),
         ],
         name = "Math Function",
-        description = "Math function to apply with selected light(s) energy, and with math Input Value, to selected light(s) energy",
+        description = "Math function to apply with selected light(s) energy, and with math Input Value, to selected " +
+        "light(s) energy",
         default = 'MULTIPLY')
     bts.OLuminLE_MathInputValue = bp.FloatProperty(name="Input Value", description="The energy value of the " +
-        "selected light(s) will be math'ed with this number, according to Math Function",
-        default=1.0)
+        "selected light(s) will be math'ed with this number, according to Math Function", default=1.0)
 
 def unregister():
     for cls in classes:
