@@ -1287,7 +1287,8 @@ class OLuminSL_SetRigSunAngle(bpy.types.Operator):
     def execute(self, context):
         for ob in context.selected_objects:
             if is_sunlit_armature(ob):
-                set_sunlit_sun_angular_diameter(get_sunlit_suns_from_armature(ob), context.scene.OLuminSL_KeyframeAngle)
+                set_sunlit_sun_angular_diameter(context, get_sunlit_suns_from_armature(ob),
+                    context.scene.OLuminSL_KeyframeAngle)
         return {'FINISHED'}
 
 class OLuminSL_SelectVisibleRigs(bpy.types.Operator):
