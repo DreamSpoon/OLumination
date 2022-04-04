@@ -22,8 +22,8 @@ import bpy
 def matrix_vector_mult(m, v):
     return m @ v
 
-def get_mesh_post_modifiers(obj):
-    depsgraph = bpy.context.evaluated_depsgraph_get()
+def get_mesh_post_modifiers(context, obj):
+    depsgraph = context.evaluated_depsgraph_get()
     object_eval = obj.evaluated_get(depsgraph)
     return bpy.data.meshes.new_from_object(object_eval)
 

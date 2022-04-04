@@ -1027,7 +1027,7 @@ def set_sunlit_armature_sun_color_data(keyframe_color, sample_width_pct, sample_
     set_sun_color_data(keyframe_color, sample_width_pct, sample_height_pct, odisk_sample_width_pct, odisk_sample_height_pct,
         get_sunlit_suns_from_armature(armature))
 
-def set_sunlit_sun_angular_diameter(light_list, keyframe_angular_diameter):
+def set_sunlit_sun_angular_diameter(context, light_list, keyframe_angular_diameter):
     for light in light_list:
         # if center point is not found, then skip this light
         if light.parent is None or is_sunlit_armature(light.parent) == False:
@@ -1036,7 +1036,7 @@ def set_sunlit_sun_angular_diameter(light_list, keyframe_angular_diameter):
         blinds = get_sunlit_blinds_for_light(light)
         if blinds is None:
             continue
-        ad = get_light_angular_diameter_from_blinds(center_point, blinds)
+        ad = get_light_angular_diameter_from_blinds(context, center_point, blinds)
         set_light_angular_diameter(light, ad)
         if keyframe_angular_diameter:
             keyframe_light_angular_diameter(light)
@@ -1054,8 +1054,8 @@ def get_sunlit_center_for_light(light):
 #     Also, improve the process by getting vectors for directions of vertexes from the center_point, and calculating
 #     the distance halfway between min and max in order to filter out unneeded/error-causing vertexes. Halfway is just
 #     a good, easy way to filter between wrong vertexes (near vertexes), and correct vertexes (far away vertexes).
-def get_light_angular_diameter_from_blinds(center_point, mesh_obj):
-    obj_mod_mesh = get_mesh_post_modifiers(mesh_obj)
+def get_light_angular_diameter_from_blinds(context, center_point, mesh_obj):
+    obj_mod_mesh = get_mesh_post_modifiers(context, mesh_obj)
     # calculate delta for each vertex, and get statistical min/max magnitudes
     v_deltas = []
     min_delta_mag = -1
@@ -1184,8 +1184,8 @@ class OLuminSL_CreateRig(bpy.types.Operator):
         return {'FINISHED'}
 
 class OLuminSL_BakeSelectedSensors(bpy.types.Operator):
-    """Bake Sunlit Rig sensor images for selected sensors only. These images will be sampled when computing the \
-    light color of the rig's suns"""
+    """Bake Sunlit Rig sensor images for selected sensors only. These images will be sampled when computing the """ \
+    """light color of the rig's suns"""
     bl_idname = "olumin_sl.bake_selected_sensors"
     bl_label = "Bake Selected Sensors"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1202,8 +1202,8 @@ class OLuminSL_BakeSelectedSensors(bpy.types.Operator):
         return {'FINISHED'}
 
 class OLuminSL_BakeRigSensors(bpy.types.Operator):
-    """Bake Sunlit Rig sensor images for sensors of selected rigs only. These images will be sampled when computing \
-    the light color of the rig's suns"""
+    """Bake Sunlit Rig sensor images for sensors of selected rigs only. These images will be sampled when """ \
+    """computing the light color of the rig's suns"""
     bl_idname = "olumin_sl.bake_rig_sensors"
     bl_label = "Bake Rig Sensors"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1217,16 +1217,17 @@ class OLuminSL_BakeRigSensors(bpy.types.Operator):
         for ob in context.selected_objects:
             if is_sunlit_armature(ob):
                 sunlit_arms.append(ob)
-        warn_list = bake_sunlit_armature_list_sensors(context, scn.OLuminSL_BakeSamples, scn.OLuminSL_BakeHideAllLights, sunlit_arms)
+        warn_list = bake_sunlit_armature_list_sensors(context, scn.OLuminSL_BakeSamples,
+            scn.OLuminSL_BakeHideAllLights, sunlit_arms)
         if len(warn_list) == 0:
             for warn in warn_list:
                 self.report({'WARNING'}, warn)
         return {'FINISHED'}
 
 class OLuminSL_SensorImagePack(bpy.types.Operator):
-    """Pack ALL (not just selected sensors) sensor images to current Blend file. Use this if sensor images are \
-    changed, e.g. use this after baking sensor images. Changes to sensor images are lost when exiting Blender if \
-    changes are not packed"""
+    """Pack ALL (not just selected sensors) sensor images to current Blend file. Use this if sensor images are """ \
+    """changed, e.g. use this after baking sensor images. Changes to sensor images are lost when exiting Blender if """ \
+    """changes are not packed"""
     bl_idname = "olumin_sl.image_pack"
     bl_label = "Pack Sensor Images"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1263,20 +1264,22 @@ class OLuminSL_SetRigSunColor(bpy.types.Operator):
         return {'FINISHED'}
 
 class OLuminSL_SetSelectSunAngle(bpy.types.Operator):
-    """Set angular diameter, for selected sun lights, based on the max angular diameter of their respective blinds. \
-    Angular diamater of blinds as seen from viewpoint of a camera located at the origin (in object space) of the rig"""
+    """Set angular diameter, for selected sun lights, based on the max angular diameter of their respective blinds. """ \
+    """Angular diamater of blinds as seen from viewpoint of a camera located at the origin (in object space) of the """ \
+    """rig"""
     bl_idname = "olumin_sl.select_blinds_angle_to_sun_angle"
     bl_label = "Set Select Angular Diameter"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        set_sunlit_sun_angular_diameter(get_sunlit_suns_from_selected(context), context.scene.OLuminSL_KeyframeAngle)
+        set_sunlit_sun_angular_diameter(context, get_sunlit_suns_from_selected(context),
+            context.scene.OLuminSL_KeyframeAngle)
         return {'FINISHED'}
 
 class OLuminSL_SetRigSunAngle(bpy.types.Operator):
-    """Set angular diameter, for sun lights of selected Sunlit Rig, based on the max angular diameter of their \
-    respective blinds. Angular diamater of blinds as seen from viewpoint of a camera located at the origin (in \
-    object space) of the rig"""
+    """Set angular diameter, for sun lights of selected Sunlit Rig, based on the max angular diameter of their """ \
+    """respective blinds. Angular diamater of blinds as seen from viewpoint of a camera located at the origin (in """ \
+    """object space) of the rig"""
     bl_idname = "olumin_sl.rig_blinds_angle_to_sun_angle"
     bl_label = "Set Rig Angular Diameter"
     bl_options = {'REGISTER', 'UNDO'}

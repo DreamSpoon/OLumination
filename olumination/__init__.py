@@ -46,6 +46,7 @@ from .sunlit_rig import (OLuminSL_CreateRig, OLuminSL_BakeSelectedSensors, OLumi
 from .proxy_metric import OLuminPM_CreateSimpleHumanProxy
 from .light_color import OLuminLC_SaturationPower
 from .light_energy import *
+from .world_envo import OLuminWE_MobileBackground
 
 AngularDiameterEnabled = False
 if bpy.app.version < (2,80,0):
@@ -67,9 +68,8 @@ class OLUMIN_PT_SunlitRigCreate(bpy.types.Panel):
         scn = context.scene
 
         box = layout.box()
-        box.prop(scn, "OLuminSL_CreateAdvancedOptions")
-        box = layout.box()
         box.label(text="Create Rig")
+        box.prop(scn, "OLuminSL_CreateAdvancedOptions")
         box.operator("olumin_sl.create_sunlit_rig")
         if scn.OLuminSL_CreateAdvancedOptions:
             box.prop(scn, "OLuminSL_BaseSphereSubdiv")
@@ -188,10 +188,23 @@ class OLUMIN_PT_ProxyMetric(bpy.types.Panel):
         box.label(text="Create Proxy Metric")
         box.operator("olumin_pm.create_proxy_metric_simple_human")
 
+class OLUMIN_PT_WorldEnvo(bpy.types.Panel):
+    bl_label = "World Envo"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = Region
+    bl_category = "OLumin"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        layout = self.layout
+
+        box = layout.box()
+        box.operator("olumin_we.mobile_background")
+
 classes = [
     OLUMIN_PT_SunlitRigCreate,
-    OLUMIN_PT_SunlitRigOther,
     OLuminSL_CreateRig,
+    OLUMIN_PT_SunlitRigOther,
     OLuminSL_BakeSelectedSensors,
     OLuminSL_BakeRigSensors,
     OLuminSL_SensorImagePack,
@@ -213,6 +226,8 @@ classes = [
     OLuminLE_MathLightEnergy,
     OLUMIN_PT_ProxyMetric,
     OLuminPM_CreateSimpleHumanProxy,
+    OLUMIN_PT_WorldEnvo,
+    OLuminWE_MobileBackground,
 ]
 
 def register():

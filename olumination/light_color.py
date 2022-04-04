@@ -24,8 +24,8 @@ else:
     from .imp_v28 import *
 
 class OLuminLC_SaturationPower(bpy.types.Operator):
-    """With selected lights, adjust the Saturation value in the light's color with the mathematical 'power' \
-    operation. Increase saturation with values below 1, decrease saturation with values above 1"""
+    """With selected lights, adjust the Saturation value in the light's color with the mathematical 'power' """ \
+    """operation. Increase saturation with values below 1, decrease saturation with values above 1"""
     bl_idname = "olumin_lc.saturation_power"
     bl_label = "Saturation Power"
     bl_options = {'REGISTER', 'UNDO'}

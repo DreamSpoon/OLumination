@@ -22,8 +22,8 @@ import bpy
 def matrix_vector_mult(m, v):
     return m * v
 
-def get_mesh_post_modifiers(obj):
-    return obj.to_mesh(bpy.context.scene, True, 'PREVIEW')
+def get_mesh_post_modifiers(context, obj):
+    return obj.to_mesh(context.scene, True, 'PREVIEW')
 
 def create_object_cube(cube_name, cube_size, cube_loc):
     bpy.ops.mesh.primitive_cube_add(radius=cube_size, location=cube_loc)
