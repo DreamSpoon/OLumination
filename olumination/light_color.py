@@ -25,8 +25,9 @@ else:
     from .imp_v28 import *
 
 class OLuminLC_ColorMath(bpy.types.Operator):
-    """With selected lights, adjust components of light's color with mathematical operation. E.g. math """ \
-    """function Power will increase saturation with values less than 1, and decrease saturation with values greater than 1"""
+    """With selected lights, adjust components of light's color (only used in BlenderRender/EEVEE) with """ \
+    """mathematical operation. E.g. math function Power will increase saturation with values less than 1, """ \
+    """and decrease saturation with values greater than 1"""
     bl_idname = "olumin_lc.math_light_color"
     bl_label = "Color Math"
     bl_options = {'REGISTER', 'UNDO'}

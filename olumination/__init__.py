@@ -47,7 +47,7 @@ from .sunlit_rig import (OLuminSL_CreateRig, OLuminSL_BakeSelectedSensors, OLumi
 from .proxy_metric import OLuminPM_CreateSimpleHumanProxy
 from .light_color import OLuminLC_ColorMath
 from .light_energy import *
-from .world_envo import OLuminWE_MobileBackground
+from .world_envo import OLuminWE_MobileBackground, OLuminWE_ObjectShaderXYZ_Map
 
 AngularDiameterEnabled = False
 if bpy.app.version < (2,80,0):
@@ -199,10 +199,22 @@ class OLUMIN_PT_WorldEnvo(bpy.types.Panel):
     bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
+        scn = context.scene
         layout = self.layout
-
         box = layout.box()
+        box.label(text="World Material Shader")
         box.operator("olumin_we.mobile_background")
+        box = layout.box()
+        box.label(text="Object Material Shader")
+        box.operator("olumin_we.object_shader_xyz_map")
+        box.prop(scn, "OLuminWE_NewMatPerObj")
+
+        # add to existing is only available if not forced to create new material per selected object
+        sub = box.column()
+        sub.active = not scn.OLuminWE_NewMatPerObj
+        sub.prop(scn, "OLuminWE_AddToExisting")
+
+        box.prop(scn, "OLuminWE_KeepModifiers")
 
 classes = [
     OLUMIN_PT_SunlitRigCreate,
@@ -231,6 +243,7 @@ classes = [
     OLuminPM_CreateSimpleHumanProxy,
     OLUMIN_PT_WorldEnvo,
     OLuminWE_MobileBackground,
+    OLuminWE_ObjectShaderXYZ_Map,
 ]
 
 def register():
@@ -363,6 +376,17 @@ def register_props():
         default = 'MULTIPLY')
     bts.OLuminLE_MathInputValue = bp.FloatProperty(name="Input Value", description="The energy value of the " +
         "selected light(s) will be math'ed with this number, according to Math Function", default=1.0)
+
+    bts.OLuminWE_NewMatPerObj = bp.BoolProperty(name="Material per Object", description="Create a new material shader " +
+        "for each object, instead of grouping object shaders, i.e. each object's material shader is independent of " +
+        "all other objects' material shader(s)",
+        default=False)
+    bts.OLuminWE_AddToExisting = bp.BoolProperty(name="Add to Existing Material", description="If enabled, try to " +
+        "add shader nodes to object's currently active material. If not enabled, create a new material shader on " +
+        "the object, appended after current material(s) on the object", default=True)
+    bts.OLuminWE_KeepModifiers = bp.BoolProperty(name="Keep Modifiers", description="Don't apply 'UV Project' " +
+        "modifiers to object UVMaps. User can temporarily reposition mesh geometry before permanently applying " +
+        "UV Project modifiers", default=False)
 
 def unregister():
     for cls in classes:
