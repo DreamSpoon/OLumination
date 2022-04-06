@@ -215,6 +215,7 @@ class OLUMIN_PT_WorldEnvo(bpy.types.Panel):
         sub.prop(scn, "OLuminWE_AddToExisting")
 
         box.prop(scn, "OLuminWE_KeepModifiers")
+        box.prop(scn, "OLuminWE_ColorTextureType")
 
 classes = [
     OLUMIN_PT_SunlitRigCreate,
@@ -387,6 +388,27 @@ def register_props():
     bts.OLuminWE_KeepModifiers = bp.BoolProperty(name="Keep Modifiers", description="Don't apply 'UV Project' " +
         "modifiers to object UVMaps. User can temporarily reposition mesh geometry before permanently applying " +
         "UV Project modifiers", default=False)
+
+    bts.OLuminWE_ColorTextureType =  bp.EnumProperty(name="Color Texture Type", description="Type of node to " +
+        "create for (X, Y, Z) vector to (R, G, B, A) color.", items=color_tex_dropdown_stuff)
+
+color_tex_dropdown_stuff = [
+    ("ShaderNodeTexBrick", "Brick Texxture", "", 1),
+    ("ShaderNodeTexChecker", "Checker Texture", "", 2),
+    ("ShaderNodeTexCoord", "TexCoord Texture", "", 3),
+    ("ShaderNodeTexEnvironment", "Environment Texture", "", 4),
+    ("ShaderNodeTexGradient", "Gradient Texture", "", 5),
+    ("ShaderNodeTexIES", "IES Texture", "", 6),
+    ("ShaderNodeTexImage", "Image Texture", "", 7),
+    ("ShaderNodeTexMagic", "Magic Texture", "", 8),
+    ("ShaderNodeTexMusgrave", "Musgrave Texture", "", 9),
+    ("ShaderNodeTexNoise", "Noise Texture", "", 10),
+    ("ShaderNodeTexPointDensity", "Point Density Texture", "", 11),
+    ("ShaderNodeTexSky", "Sky Texture", "", 12),
+    ("ShaderNodeTexVoronoi", "Voronoi Texture", "", 13),
+    ("ShaderNodeTexWave", "Wave Texture", "", 14),
+    ("ShaderNodeTexWhiteNoise", "White Noise Texture", "", 15),
+]
 
 def unregister():
     for cls in classes:

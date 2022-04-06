@@ -17,6 +17,7 @@
 # ##### END GPL LICENSE BLOCK #####
 
 import bpy
+import math
 
 WE_XY_MAP_NAME = "xy_to_uv_map"
 WE_XZED_MAP_NAME = "xzed_to_uv_map"
@@ -97,7 +98,7 @@ def create_mobile_background(context):
 class OLuminWE_ObjectShaderXYZ_Map(bpy.types.Operator):
     """With selected objects, append a new shader to capture XYZ vertex coordinates and store them in two UV maps """ \
     """for resultant XYZ -> UVW mapping. E.g. Use when applying noise texture node to a mesh that will be deformed by """ \
-    """shapekeys/simulation. Note: Widgets also created and hidden"""
+    """shapekeys/simulation. Note: Widget cameras are created and hidden"""
     bl_idname = "olumin_we.object_shader_xyz_map"
     bl_label = "Object Shader XYZ"
     bl_options = {'REGISTER', 'UNDO'}
@@ -112,15 +113,15 @@ class OLuminWE_ObjectShaderXYZ_Map(bpy.types.Operator):
             # cannot apply material to non-mesh objects
             if obj.type != "MESH":
                 continue
-            uv_map_xy, uv_map_xzed = create_xy_and_xzed_maps(obj)
+            uv_map_xy, uv_map_xzed = create_xy_and_xzed_uv_maps(obj)
 
             if scn.OLuminWE_NewMatPerObj:
                 # create a completely new material shader and append material to each object
-                mat_shader_per_obj = create_xyz_to_uvw_mat_shader(None, uv_map_xy.name, uv_map_xzed.name)
+                mat_shader_per_obj = create_xyz_to_uvw_mat_shader(None, uv_map_xy.name, uv_map_xzed.name, scn.OLuminWE_ColorTextureType)
                 obj.data.materials.append(mat_shader_per_obj)
             else:
                 if scn.OLuminWE_AddToExisting and obj.active_material != None:
-                    create_xyz_to_uvw_mat_shader(obj.active_material, uv_map_xy.name, uv_map_xzed.name)
+                    create_xyz_to_uvw_mat_shader(obj.active_material, uv_map_xy.name, uv_map_xzed.name, scn.OLuminWE_ColorTextureType)
                 else:
                     # check if current combination of (uv_map_xy.name, uv_map_xzed.name) have been used, and get that material
 
@@ -132,7 +133,7 @@ class OLuminWE_ObjectShaderXYZ_Map(bpy.types.Operator):
                     obj_mat_shader = xy_name_dictionary.get(uv_map_xzed.name)
                     if obj_mat_shader is None:
                         # create the mat because it wasn't found in the name combinations nested-dictionary
-                        obj_mat_shader = create_xyz_to_uvw_mat_shader(None, uv_map_xy.name, uv_map_xzed.name)
+                        obj_mat_shader = create_xyz_to_uvw_mat_shader(None, uv_map_xy.name, uv_map_xzed.name, scn.OLuminWE_ColorTextureType)
                         # add the material to the nested-dictionary, for use later if needed
                         # this will reduce the amount of redundant material shaders created
                         xy_name_dictionary[uv_map_xzed.name] = obj_mat_shader
@@ -140,16 +141,21 @@ class OLuminWE_ObjectShaderXYZ_Map(bpy.types.Operator):
                         obj.data.materials.append(obj_mat_shader)
                     else:
                         # add the nodes to the pre-existing material shader
-                        create_xyz_to_uvw_mat_shader(obj_mat_shader, uv_map_xy.name, uv_map_xzed.name)
+                        create_xyz_to_uvw_mat_shader(obj_mat_shader, uv_map_xy.name, uv_map_xzed.name, scn.OLuminWE_ColorTextureType)
+
+            cam_xy, cam_xzed = add_uv_project_cameras(context)
+            add_object_uv_project_mods(obj, uv_map_xy, uv_map_xzed, cam_xy, cam_xzed)
 
         return {'FINISHED'}
 
-def create_xy_and_xzed_maps(obj):
+# create two UV maps on object 'obj', to be used for XYZ to UVW mapping via two UV Project modifiers on object 'obj'
+def create_xy_and_xzed_uv_maps(obj):
     xy_uvmap = obj.data.uv_textures.new(name=WE_XY_MAP_NAME)
     xzed_uvmap = obj.data.uv_textures.new(name=WE_XZED_MAP_NAME)
     return xy_uvmap, xzed_uvmap
 
-def create_xyz_to_uvw_mat_shader(prev_mat_shader, xy_uvmap_name, xzed_uvmap_name):
+# create material shader nodes, to interact with two UV maps (the XYZ to UVW map)
+def create_xyz_to_uvw_mat_shader(prev_mat_shader, xy_uvmap_name, xzed_uvmap_name, color_texture_node_type):
     mat_shader = prev_mat_shader
     if mat_shader == None:
         mat_shader = bpy.data.materials.new(name="xyz_to_uvw_mat")
@@ -163,37 +169,38 @@ def create_xyz_to_uvw_mat_shader(prev_mat_shader, xy_uvmap_name, xzed_uvmap_name
     new_nodes = {}
 
     node = tree_nodes.new(type="ShaderNodeOutputMaterial")
-    node.location = (405.141, 106.707)
+    node.location = (406, 106)
     new_nodes["Material Output"] = node
 
     node = tree_nodes.new(type="ShaderNodeBsdfPrincipled")
-    node.location = (203.51, 197.018)
+    node.location = (204, 196)
     new_nodes["Principled BSDF"] = node
 
-    node = tree_nodes.new(type="ShaderNodeTexEnvironment")
-    node.location = (18.404, 98.668)
-    new_nodes["Environment Texture"] = node
+    # vector to color node is special, because it is variable
+    node = tree_nodes.new(type=color_texture_node_type)
+    node.location = (18, 100)
+    new_nodes[color_texture_node_type] = node
 
     node = tree_nodes.new(type="ShaderNodeCombineXYZ")
-    node.location = (-171.596, 54.975)
+    node.location = (-172, 55)
     new_nodes["Combine XYZ"] = node
 
     node = tree_nodes.new(type="ShaderNodeUVMap")
-    node.location = (-545.431, 56.321)
+    node.location = (-545, 56)
     node.uv_map = xy_uvmap_name
     new_nodes["UV Map"] = node
 
     node = tree_nodes.new(type="ShaderNodeUVMap")
-    node.location = (-543.758, -71.373)
+    node.location = (-544, -71)
     node.uv_map = xzed_uvmap_name
     new_nodes["UV Map.001"] = node
 
     node = tree_nodes.new(type="ShaderNodeSeparateXYZ")
-    node.location = (-340.174, 77.177)
+    node.location = (-340, 77)
     new_nodes["Separate XYZ"] = node
 
     node = tree_nodes.new(type="ShaderNodeSeparateXYZ")
-    node.location = (-340.712, -46.002)
+    node.location = (-340, -46)
     new_nodes["Separate XYZ.001"] = node
 
     tree_links = mat_shader.node_tree.links
@@ -202,8 +209,44 @@ def create_xyz_to_uvw_mat_shader(prev_mat_shader, xy_uvmap_name, xzed_uvmap_name
     tree_links.new(new_nodes["Separate XYZ"].outputs[0], new_nodes["Combine XYZ"].inputs[0])
     tree_links.new(new_nodes["Separate XYZ"].outputs[1], new_nodes["Combine XYZ"].inputs[1])
     tree_links.new(new_nodes["Separate XYZ.001"].outputs[1], new_nodes["Combine XYZ"].inputs[2])
-    tree_links.new(new_nodes["Combine XYZ"].outputs[0], new_nodes["Environment Texture"].inputs[0])
-    tree_links.new(new_nodes["Environment Texture"].outputs[0], new_nodes["Principled BSDF"].inputs[0])
+    tree_links.new(new_nodes["Combine XYZ"].outputs[0], new_nodes[color_texture_node_type].inputs[0])
+    tree_links.new(new_nodes[color_texture_node_type].outputs[0], new_nodes["Principled BSDF"].inputs[0])
     tree_links.new(new_nodes["Principled BSDF"].outputs[0], new_nodes["Material Output"].inputs[0])
 
     return mat_shader
+
+def add_uv_project_cameras(context):
+    bpy.ops.object.camera_add(location=(0, 0, 0), rotation=(0, 0, 0))
+    cam_xy = context.active_object
+    cam_xy.data.type = "ORTHO"
+    cam_xy.data.ortho_scale = 1.0
+    set_object_hide_view(cam_xy, True)
+
+    bpy.ops.object.camera_add(location=(0, 0, 0), rotation=(math.radians(90), 0, 0))
+    cam_xzed = context.active_object
+    cam_xzed.data.type = "ORTHO"
+    cam_xzed.data.ortho_scale = 1.0
+    set_object_hide_view(cam_xzed, True)
+
+    return cam_xy, cam_xzed
+
+# project the XYZ coordinates to UVW coordinates
+# two UV maps give 4 coordinates (1 is wasted!), and use 3 coordinates to store (X, Y, Z) as (U1, V1, U2)
+def add_object_uv_project_mods(obj, uv_map_xy, uv_map_xzed, cam_xy, cam_xzed):
+    # (U1, V1)
+    b_mod_xy = obj.modifiers.new("UVProject.XY", "UV_PROJECT")
+    b_mod_xy.uv_layer = uv_map_xy.name
+    b_mod_xy.aspect_x = 1.0
+    b_mod_xy.aspect_y = 1.0
+    b_mod_xy.scale_x = 1.0
+    b_mod_xy.scale_y = 1.0
+    b_mod_xy.projectors[0].object = cam_xy
+
+    # (U2, V2)
+    b_mod_xzed = obj.modifiers.new("UVProject.XZ", "UV_PROJECT")
+    b_mod_xzed.uv_layer = uv_map_xzed.name
+    b_mod_xzed.aspect_x = 1.0
+    b_mod_xzed.aspect_y = 1.0
+    b_mod_xzed.scale_x = 1.0
+    b_mod_xzed.scale_y = 1.0
+    b_mod_xzed.projectors[0].object = cam_xzed
