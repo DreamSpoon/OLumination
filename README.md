@@ -28,3 +28,26 @@ Note: This function requires the Rigify addon to be enabled. Rigify is included 
   - Click Preferences
   - Go to the Addons section, and search for Rigify
   - Enable Rigify addon
+
+### World Envo
+Two parts:
+  - Mobile Background
+  - Object XYZ to UVW
+
+#### Mobile Background
+Add some "depth" to flat HDRI environments with Mobile Background. Select the Camera that will control the background, and press the World Envo -> Mobile Background button.
+This will add a world background material shader to simulate movement of camera within HDRI. Adjust the Scale part of the Vector mapping, in the world material shader, to set the distance to the "floor" plane. This is a bit of a difficult process and usually requires synchronizing with geometry in the scene. I.e. It's a good idea to set up the geometry in the scene with the HDRI before adjusting the "floor plane".
+
+Notes:
+  - the Scale part of the Vector Mapping is an inverse relationship with the distance to the "floor plane"
+  - in other words, if the "floor plane" is 2 meters down (-Z), then set Scale vector in Vector Mapping node to (0.5, 0.5, 0.5)
+    - the inverse of 2 is 1/2
+    - use 0.5 because 0.5 = 1/2 meters
+
+#### Object XYZ to UVW
+Very useful when using soft body / cloth sims with procedural textures that need XYZ coordinates.
+I.e. the procedural texture appears to stand still while the mesh moves/deforms.
+Basically the function does:
+  - each vertex has it's original XYZ coordinate stored, and
+  - brings that XYZ coordinate with it even when it's deformed/transformed
+  - the XYZ coordinate is being stored in two UV Maps that are combined with a custom material shader node setup

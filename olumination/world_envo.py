@@ -106,7 +106,7 @@ class OLuminWE_ObjectShaderXYZ_Map(bpy.types.Operator):
     """for resultant XYZ -> UVW mapping. E.g. Use when applying noise texture node to a mesh that will be deformed by """ \
     """shapekeys/simulation. Note: Widget cameras are created and hidden"""
     bl_idname = "olumin_we.object_shader_xyz_map"
-    bl_label = "Object Shader XYZ"
+    bl_label = "XYZ to UVW"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
@@ -120,6 +120,10 @@ class OLuminWE_ObjectShaderXYZ_Map(bpy.types.Operator):
             if obj.type != "MESH":
                 continue
             uv_map_xy, uv_map_xzed = create_xy_and_xzed_uv_maps(obj)
+            # prevent errors
+            if uv_map_xy is None or uv_map_xzed is None:
+                print("Unable to create UV Maps on object: " + obj.name)
+                continue
 
             if scn.OLuminWE_NewMatPerObj:
                 # create a completely new material shader and append material to each object
@@ -183,9 +187,20 @@ def delete_widget_cams(cam_xy, cam_xzed):
 
 # create two UV maps on object 'obj', to be used for XYZ to UVW mapping via two UV Project modifiers on object 'obj'
 def create_xy_and_xzed_uv_maps(obj):
-    xy_uvmap = obj.data.uv_textures.new(name=WE_XY_MAP_NAME)
-    xzed_uvmap = obj.data.uv_textures.new(name=WE_XZED_MAP_NAME)
+    xy_map_name = get_unused_uv_map_name(obj, WE_XY_MAP_NAME)
+    xy_uvmap = obj.data.uv_textures.new(name=xy_map_name)
+    xzed_map_name = get_unused_uv_map_name(obj, WE_XZED_MAP_NAME)
+    xzed_uvmap = obj.data.uv_textures.new(name=xzed_map_name)
     return xy_uvmap, xzed_uvmap
+
+def get_unused_uv_map_name(obj, base_map_name):
+    if obj.data.uv_textures.get(base_map_name) is None:
+        return base_map_name
+    for test_num in range(1, 999):
+        test_map_name = base_map_name + '.' + str(test_num).zfill(3)
+        if obj.data.uv_textures.get(test_map_name) is None:
+            return test_map_name
+    return None
 
 # create material shader nodes, to interact with two UV maps (the XYZ to UVW map)
 def create_xyz_to_uvw_mat_shader(prev_mat_shader, xy_uvmap_name, xzed_uvmap_name, color_texture_node_type):
@@ -261,11 +276,16 @@ def add_uv_project_cameras(context):
     cam_xy = context.active_object
     cam_xy.data.type = "ORTHO"
     cam_xy.data.ortho_scale = 1.0
+    # Offset by 0.5 in all dimensions, this seems to relate to:
+    #     (0.5, 0.5) is middle in UV coordinates, and
+    #     (0, 0, 0) is middle in XYZ coordinates.
+    cam_xy.location = (0.5, 0.5, 0.5)
 
     bpy.ops.object.camera_add(location=(0, 0, 0), rotation=(math.radians(90), 0, 0))
     cam_xzed = context.active_object
     cam_xzed.data.type = "ORTHO"
     cam_xzed.data.ortho_scale = 1.0
+    cam_xzed.location = (0.5, 0.5, 0.5)
 
     return cam_xy, cam_xzed
 
@@ -301,4 +321,9 @@ def apply_proj_modifiers(context, obj, copy_hide_modifiers, proj_mod_xy, proj_mo
 
     if copy_hide_modifiers:
         # re-create them, instead of copying - haha!
-        add_object_uv_project_mods(obj, uv_map_xy, uv_map_xzed, cam_xy, cam_xzed)
+        b_mod_xy, b_mod_xzed = add_object_uv_project_mods(obj, uv_map_xy, uv_map_xzed, cam_xy, cam_xzed)
+        # hide them
+        b_mod_xy.show_viewport = False
+        b_mod_xy.show_render = False
+        b_mod_xzed.show_viewport = False
+        b_mod_xzed.show_render = False

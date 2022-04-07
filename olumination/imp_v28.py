@@ -18,6 +18,24 @@
 
 import bpy
 
+COLOR_TEXTURE_TYPES = [
+    ("ShaderNodeTexBrick", "Brick Texture", "", 1),
+    ("ShaderNodeTexChecker", "Checker Texture", "", 2),
+    ("ShaderNodeTexCoord", "TexCoord Texture", "", 3),
+    ("ShaderNodeTexEnvironment", "Environment Texture", "", 4),
+    ("ShaderNodeTexGradient", "Gradient Texture", "", 5),
+    ("ShaderNodeTexIES", "IES Texture", "", 6),
+    ("ShaderNodeTexImage", "Image Texture", "", 7),
+    ("ShaderNodeTexMagic", "Magic Texture", "", 8),
+    ("ShaderNodeTexMusgrave", "Musgrave Texture", "", 9),
+    ("ShaderNodeTexNoise", "Noise Texture", "", 10),
+    ("ShaderNodeTexPointDensity", "Point Density Texture", "", 11),
+    ("ShaderNodeTexSky", "Sky Texture", "", 12),
+    ("ShaderNodeTexVoronoi", "Voronoi Texture", "", 13),
+    ("ShaderNodeTexWave", "Wave Texture", "", 14),
+    ("ShaderNodeTexWhiteNoise", "White Noise Texture", "", 15),
+]
+
 # this function also works to multiply Quaternion * Vector
 def matrix_vector_mult(m, v):
     return m @ v
