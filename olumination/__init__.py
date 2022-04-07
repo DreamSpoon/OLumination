@@ -46,7 +46,7 @@ from .sunlit_rig import (OLuminSL_CreateRig, OLuminSL_BakeSelectedSensors, OLumi
     OLuminSL_PointRegularFromView, OLuminSL_PointODiskFromView)
 from .proxy_metric import OLuminPM_CreateSimpleHumanProxy
 from .light_color import OLuminLC_ColorMath
-from .light_energy import *
+from .light_energy import OLuminLE_MathLightEnergy
 from .world_envo import OLuminWE_MobileBackground, OLuminWE_ObjectShaderXYZ_Map
 
 AngularDiameterEnabled = False
@@ -207,15 +207,18 @@ class OLUMIN_PT_WorldEnvo(bpy.types.Panel):
         box = layout.box()
         box.label(text="Object Material Shader")
         box.operator("olumin_we.object_shader_xyz_map")
+        box.prop(scn, "OLuminWE_ColorTextureType")
         box.prop(scn, "OLuminWE_NewMatPerObj")
 
         # add to existing is only available if not forced to create new material per selected object
         sub = box.column()
         sub.active = not scn.OLuminWE_NewMatPerObj
         sub.prop(scn, "OLuminWE_AddToExisting")
-
-        box.prop(scn, "OLuminWE_KeepModifiers")
-        box.prop(scn, "OLuminWE_ColorTextureType")
+        box.label(text="Modifiers")
+        box.prop(scn, "OLuminWE_ApplyModifiers")
+        sub = box.column()
+        sub.active = scn.OLuminWE_ApplyModifiers
+        sub.prop(scn, "OLuminWE_CopyHideModifiers")
 
 classes = [
     OLUMIN_PT_SunlitRigCreate,
@@ -378,37 +381,38 @@ def register_props():
     bts.OLuminLE_MathInputValue = bp.FloatProperty(name="Input Value", description="The energy value of the " +
         "selected light(s) will be math'ed with this number, according to Math Function", default=1.0)
 
-    bts.OLuminWE_NewMatPerObj = bp.BoolProperty(name="Material per Object", description="Create a new material shader " +
-        "for each object, instead of grouping object shaders, i.e. each object's material shader is independent of " +
-        "all other objects' material shader(s)",
-        default=False)
+    bts.OLuminWE_NewMatPerObj = bp.BoolProperty(name="Material per Object", description="Create a new material " +
+        "shader for each object, instead of grouping object shaders, i.e. each object's material shader is " +
+        "independent of all other objects' material shader(s)", default=False)
     bts.OLuminWE_AddToExisting = bp.BoolProperty(name="Add to Existing Material", description="If enabled, try to " +
         "add shader nodes to object's currently active material. If not enabled, create a new material shader on " +
         "the object, appended after current material(s) on the object", default=True)
-    bts.OLuminWE_KeepModifiers = bp.BoolProperty(name="Keep Modifiers", description="Don't apply 'UV Project' " +
-        "modifiers to object UVMaps. User can temporarily reposition mesh geometry before permanently applying " +
-        "UV Project modifiers", default=False)
+
+    bts.OLuminWE_ApplyModifiers = bp.BoolProperty(name="Apply Modifiers", description="Apply 'UV Project' " +
+        "modifiers to the UV Maps. I.e. Doing this will save a copy of the XYZ coordinates of each vertex into " +
+        "the two UV Maps (XY and XZ maps)", default=True)
+    bts.OLuminWE_CopyHideModifiers = bp.BoolProperty(name="Copy and Hide Modifiers", description="Copy 'UV Project' " +
+        "modifiers when applying the modifiers, and hide the copied modifiers afterwards. This allows geometry to " +
+        "be changed before applying 'UV Project' modifiers - or add extra XYZ -> UVW maps", default=False)
 
     bts.OLuminWE_ColorTextureType =  bp.EnumProperty(name="Color Texture Type", description="Type of node to " +
-        "create for (X, Y, Z) vector to (R, G, B, A) color.", items=color_tex_dropdown_stuff)
-
-color_tex_dropdown_stuff = [
-    ("ShaderNodeTexBrick", "Brick Texxture", "", 1),
-    ("ShaderNodeTexChecker", "Checker Texture", "", 2),
-    ("ShaderNodeTexCoord", "TexCoord Texture", "", 3),
-    ("ShaderNodeTexEnvironment", "Environment Texture", "", 4),
-    ("ShaderNodeTexGradient", "Gradient Texture", "", 5),
-    ("ShaderNodeTexIES", "IES Texture", "", 6),
-    ("ShaderNodeTexImage", "Image Texture", "", 7),
-    ("ShaderNodeTexMagic", "Magic Texture", "", 8),
-    ("ShaderNodeTexMusgrave", "Musgrave Texture", "", 9),
-    ("ShaderNodeTexNoise", "Noise Texture", "", 10),
-    ("ShaderNodeTexPointDensity", "Point Density Texture", "", 11),
-    ("ShaderNodeTexSky", "Sky Texture", "", 12),
-    ("ShaderNodeTexVoronoi", "Voronoi Texture", "", 13),
-    ("ShaderNodeTexWave", "Wave Texture", "", 14),
-    ("ShaderNodeTexWhiteNoise", "White Noise Texture", "", 15),
-]
+        "create for (X, Y, Z) vector to (R, G, B, A) color.", items=[
+                ("ShaderNodeTexBrick", "Brick Texture", "", 1),
+                ("ShaderNodeTexChecker", "Checker Texture", "", 2),
+                ("ShaderNodeTexCoord", "TexCoord Texture", "", 3),
+                ("ShaderNodeTexEnvironment", "Environment Texture", "", 4),
+                ("ShaderNodeTexGradient", "Gradient Texture", "", 5),
+                ("ShaderNodeTexIES", "IES Texture", "", 6),
+                ("ShaderNodeTexImage", "Image Texture", "", 7),
+                ("ShaderNodeTexMagic", "Magic Texture", "", 8),
+                ("ShaderNodeTexMusgrave", "Musgrave Texture", "", 9),
+                ("ShaderNodeTexNoise", "Noise Texture", "", 10),
+                ("ShaderNodeTexPointDensity", "Point Density Texture", "", 11),
+                ("ShaderNodeTexSky", "Sky Texture", "", 12),
+                ("ShaderNodeTexVoronoi", "Voronoi Texture", "", 13),
+                ("ShaderNodeTexWave", "Wave Texture", "", 14),
+                ("ShaderNodeTexWhiteNoise", "White Noise Texture", "", 15),
+            ], default="ShaderNodeTexNoise")
 
 def unregister():
     for cls in classes:
