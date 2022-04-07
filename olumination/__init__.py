@@ -386,7 +386,7 @@ def register_props():
         "independent of all other objects' material shader(s)", default=False)
     bts.OLuminWE_AddToExisting = bp.BoolProperty(name="Add to Existing Material", description="If enabled, try to " +
         "add shader nodes to object's currently active material. If not enabled, create a new material shader on " +
-        "the object, appended after current material(s) on the object", default=True)
+        "the object, appended after current material(s) on the object", default=False)
 
     bts.OLuminWE_ApplyModifiers = bp.BoolProperty(name="Apply Modifiers", description="Apply 'UV Project' " +
         "modifiers to the UV Maps. I.e. Doing this will save a copy of the XYZ coordinates of each vertex into " +

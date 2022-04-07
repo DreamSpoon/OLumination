@@ -149,3 +149,9 @@ def keyframe_light_angular_diameter(light_obj):
 
 def image_pack_image(img):
     img.pack()
+
+def create_object_uv_map(obj, xy_map_name):
+    return obj.data.uv_layers.new(name=xy_map_name)
+
+def get_object_uv_map(obj, base_map_name):
+    return obj.data.uv_layers.get(base_map_name)

@@ -144,3 +144,9 @@ def set_mat_diffuse_color(mat, mat_diffuse_RGBA):
 
 def image_pack_image(img):
     img.pack(as_png=True)
+
+def create_object_uv_map(obj, xy_map_name):
+    return obj.data.uv_textures.new(name=xy_map_name)
+
+def get_object_uv_map(obj, base_map_name):
+    return obj.data.uv_textures.get(base_map_name)

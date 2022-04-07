@@ -188,17 +188,17 @@ def delete_widget_cams(cam_xy, cam_xzed):
 # create two UV maps on object 'obj', to be used for XYZ to UVW mapping via two UV Project modifiers on object 'obj'
 def create_xy_and_xzed_uv_maps(obj):
     xy_map_name = get_unused_uv_map_name(obj, WE_XY_MAP_NAME)
-    xy_uvmap = obj.data.uv_textures.new(name=xy_map_name)
+    xy_uvmap = create_object_uv_map(obj, xy_map_name)
     xzed_map_name = get_unused_uv_map_name(obj, WE_XZED_MAP_NAME)
-    xzed_uvmap = obj.data.uv_textures.new(name=xzed_map_name)
+    xzed_uvmap = create_object_uv_map(obj, xzed_map_name)
     return xy_uvmap, xzed_uvmap
 
 def get_unused_uv_map_name(obj, base_map_name):
-    if obj.data.uv_textures.get(base_map_name) is None:
+    if get_object_uv_map(obj, base_map_name) is None:
         return base_map_name
     for test_num in range(1, 999):
         test_map_name = base_map_name + '.' + str(test_num).zfill(3)
-        if obj.data.uv_textures.get(test_map_name) is None:
+        if get_object_uv_map(obj, test_map_name) is None:
             return test_map_name
     return None
 
@@ -316,8 +316,9 @@ def apply_proj_modifiers(context, obj, copy_hide_modifiers, proj_mod_xy, proj_mo
     cam_xy, cam_xzed):
     set_active_object(context, obj)
 
-    bpy.ops.object.modifier_apply(apply_as='DATA', modifier=proj_mod_xy.name)
-    bpy.ops.object.modifier_apply(apply_as='DATA', modifier=proj_mod_xzed.name)
+    # apply last modifier first
+    bpy.ops.object.modifier_apply(modifier=proj_mod_xzed.name)
+    bpy.ops.object.modifier_apply(modifier=proj_mod_xy.name)
 
     if copy_hide_modifiers:
         # re-create them, instead of copying - haha!
