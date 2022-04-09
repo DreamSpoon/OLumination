@@ -315,7 +315,7 @@ def register_props():
 
     bts.OLuminSL_KeyframeColor = bp.BoolProperty(name="Keyframe Color", description="Add keyframe when setting " +
         "sun color, to enable animation of suns. E.g. Add keyframes when major changes in environment lighting " +
-        "occur, such as lightning strikes, day/night changes, etc", default=False)
+        "occur, such as lightning strikes, day to night changes, etc", default=False)
     bts.OLuminSL_KeyframeAngle = bp.BoolProperty(name="Keyframe Angular Diameter", description="Add keyframe when setting " +
         "sun angular diameter, to enable animation of suns. E.g. Add keyframes when a bright light gets " +
         "larger/smaller in the environment's lighting, like a sun going supernova, etc",
@@ -391,12 +391,11 @@ def register_props():
     bts.OLuminWE_ApplyModifiers = bp.BoolProperty(name="Apply Modifiers", description="Apply 'UV Project' " +
         "modifiers to the UV Maps. I.e. Doing this will save a copy of the XYZ coordinates of each vertex into " +
         "the two UV Maps (XY and XZ maps)", default=True)
-    bts.OLuminWE_CopyHideModifiers = bp.BoolProperty(name="Copy and Hide Modifiers", description="Copy 'UV Project' " +
-        "modifiers when applying the modifiers, and hide the copied modifiers afterwards. This allows geometry to " +
-        "be changed before applying 'UV Project' modifiers - or add extra XYZ -> UVW maps", default=False)
+    bts.OLuminWE_CopyHideModifiers = bp.BoolProperty(name="Copy and Hide Modifiers", description="Enable this to " +
+        "keep a copy of the UV Project modifiers on the selected object(s) after applying them once", default=True)
 
     bts.OLuminWE_ColorTextureType =  bp.EnumProperty(name="Color Texture Type", description="Type of node to " +
-        "create for (X, Y, Z) vector to (R, G, B, A) color.", items=COLOR_TEXTURE_TYPES, default="ShaderNodeTexNoise")
+        "create for color input to Principled BSDF", items=COLOR_TEXTURE_TYPES, default="ShaderNodeTexNoise")
 
 def unregister():
     for cls in classes:

@@ -21,8 +21,8 @@ Various functions to use with a Sunlit Rig, e.g.
   - set 3D angles of suns / occluding disks using from middle of 3DView window (where you are looking), or Camera's point of view
 
 ### Proxy Metric
-To make it easier to create geometry in Blender that matches an HDRI background, quickly create objects that can be used to "guess the geometry" more simply/accurately.
-E.g. Add a human meta-rig to place in the scene and guess positions of points on uneven ground (e.g. nearby parts of grassy hill).
+One button to create human sized rig, to estimate distances to points in HDRI background, to re-create geometry in HDRI.
+E.g. use with "outdoor" HDRIs to re-create ground, hills, houses, etc.
 Note: This function requires the Rigify addon to be enabled. Rigify is included with Blender, so enable the addon:
   - Use Blender's 'Edit' menu (Blender version 2.8 and later), or 'File' menu (Blender version 2.79)
   - Click Preferences
@@ -43,10 +43,11 @@ Notes:
   - in other words, if the "floor plane" is 2 meters down (-Z), then set Scale vector in Vector Mapping node to (0.5, 0.5, 0.5)
     - the inverse of 2 is 1/2
     - use 0.5 because 0.5 = 1/2 meters
+	- this is a rough estimate, modify the Scale as needed
 
 #### Object XYZ to UVW
-Very useful when using soft body / cloth sims with procedural textures that need XYZ coordinates.
-I.e. the procedural texture appears to stand still while the mesh moves/deforms.
+Saves the current XYZ locations of all vertexes (saved as UV maps), so that vertexes can be deformed and still retain their original XYZ mapping.
+E.g. use with procedural textures on mesh objects that have Cloth/Soft-Body sims, or Shapekeys
 Basically the function does:
   - each vertex has it's original XYZ coordinate stored, and
   - brings that XYZ coordinate with it even when it's deformed/transformed

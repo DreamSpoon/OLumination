@@ -29,14 +29,15 @@ WE_XY_MAP_NAME = "xy_to_uv_map"
 WE_XZED_MAP_NAME = "xzed_to_uv_map"
 
 class OLuminWE_MobileBackground(bpy.types.Operator):
-    """Enable movement of scene's background texture (e.g. HDRI texture) with drivers attaching it to currently active object"""
+    """Enable movement of the world background environment texture (e.g. HDRI texture), by connecting it to camera location.""" \
+    """Select camera before using this function, because active object is used to drive apparent movement of background"""
     bl_idname = "olumin_we.mobile_background"
     bl_label = "Mobile Background"
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
         if context.active_object == None:
-            self.report({'ERROR'}, "Cannot get active_object, make an object active and try again (e.g. click on a visible object)")
+            self.report({'ERROR'}, "Cannot get active_object, select a visible object (e.g. camera) and try again")
             return {'CANCELLED'}
         create_mobile_background(context)
 
@@ -104,7 +105,7 @@ def create_mobile_background(context):
 class OLuminWE_ObjectShaderXYZ_Map(bpy.types.Operator):
     """With selected objects, append a new shader to capture XYZ vertex coordinates and store them in two UV maps """ \
     """for resultant XYZ -> UVW mapping. E.g. Use when applying noise texture node to a mesh that will be deformed by """ \
-    """shapekeys/simulation. Note: Widget cameras are created and hidden"""
+    """shapekeys/simulation"""
     bl_idname = "olumin_we.object_shader_xyz_map"
     bl_label = "XYZ to UVW"
     bl_options = {'REGISTER', 'UNDO'}
