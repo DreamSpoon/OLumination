@@ -366,6 +366,12 @@ def create_sunlit_armature(context, num_sun_lights, num_occluding_disks):
     bpy.ops.object.armature_add(enter_editmode=True, location=(0, 0, 0))
     armature = context.active_object
 
+    widget_cube.parent = armature
+    widget_tri.parent = armature
+    widget_plane.parent = armature
+    widget_cone.parent = armature
+    widget_circle.parent = armature
+
     # create bone to manipulate base sphere - the radius of sphere controls the distance to the blinds from the "origin"
     # sphere bone starts from initial bone "Bone", and is modified
     sphere_bone = armature.data.edit_bones[0]
