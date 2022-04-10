@@ -52,55 +52,84 @@ def create_mobile_background(context):
     # delete all nodes from the initial environment shader setup
     tree_nodes.clear()
 
-    # world output - final output
-    node_output = tree_nodes.new(type="ShaderNodeOutputWorld")
-    node_output.location = (409, 39)
+    # material shader nodes
+    new_nodes = {}
 
-    # background
-    node_background = tree_nodes.new(type="ShaderNodeBackground")
-    node_background.location = (219, 52)
+    node = tree_nodes.new(type="ShaderNodeVectorMath")
+    node.location = (-161.0, 77.0)
+    new_nodes["Vector Math"] = node
 
-    # environment texture
-    node_environment = tree_nodes.new("ShaderNodeTexEnvironment")
-    node_environment.location = (29, 106)
+    node = tree_nodes.new(type="ShaderNodeTexCoord")
+    node.location = (-379.728, 138.901)
+    new_nodes["Texture Coordinate"] = node
 
-    # vector math
-    node_vec_math = tree_nodes.new("ShaderNodeVectorMath")
-    node_vec_math.location = (-161, 77)
+    node = tree_nodes.new(type="ShaderNodeMapping")
+    node.location = (-380.074, -114.44)
+    new_nodes["Mapping"] = node
 
-    # input texture coordinates
-    node_tex_coord = tree_nodes.new("ShaderNodeTexCoord")
-    node_tex_coord.location = (-351, 119)
+    node = tree_nodes.new(type="ShaderNodeTexEnvironment")
+    node.location = (35.629, 102.683)
+    new_nodes["Environment Texture"] = node
 
-    # vector mapping
-    node_vec_mapping = tree_nodes.new("ShaderNodeMapping")
-    node_vec_mapping.vector_type = "POINT"
-    node_vec_mapping.location = (-532, -136)
+    node = tree_nodes.new(type="ShaderNodeBackground")
+    node.location = (479.566, 171.551)
+    new_nodes["Background"] = node
+
+    node = tree_nodes.new(type="ShaderNodeOutputWorld")
+    node.location = (646.363, 167.949)
+    new_nodes["World Output"] = node
+
+    # add EEVEE stuff
+    if bpy.app.version >= (2,80,0):
+        node = tree_nodes.new(type="ShaderNodeMixShader")
+        node.location = (614.089, -81.285)
+        new_nodes["Mix Shader"] = node
+
+        node = tree_nodes.new(type="ShaderNodeOutputWorld")
+        node.location = (787.293, -97.521)
+        new_nodes["World Output.001"] = node
+
+        node = tree_nodes.new(type="ShaderNodeLightPath")
+        node.location = (162.052, -129.775)
+        new_nodes["Light Path"] = node
+
+        node = tree_nodes.new(type="ShaderNodeBackground")
+        node.location = (412.171, -180.072)
+        new_nodes["Background.001"] = node
+
+        node = tree_nodes.new(type="ShaderNodeBackground")
+        node.location = (406.071, -27.986)
+        new_nodes["Background.002"] = node
+
+    # links between nodes
+    tree_links = scn_w.node_tree.links
+    tree_links.new(new_nodes["Environment Texture"].outputs[0], new_nodes["Background"].inputs[0])
+    tree_links.new(new_nodes["Background"].outputs[0], new_nodes["World Output"].inputs[0])
+    tree_links.new(new_nodes["Vector Math"].outputs[0], new_nodes["Environment Texture"].inputs[0])
+    tree_links.new(new_nodes["Texture Coordinate"].outputs[0], new_nodes["Vector Math"].inputs[0])
+    tree_links.new(new_nodes["Mapping"].outputs[0], new_nodes["Vector Math"].inputs[1])
+
+    # add EEVEE stuff
+    if bpy.app.version >= (2,80,0):
+        tree_links.new(new_nodes["Light Path"].outputs[0], new_nodes["Mix Shader"].inputs[0])
+        tree_links.new(new_nodes["Environment Texture"].outputs[0], new_nodes["Background.001"].inputs[0])
+        tree_links.new(new_nodes["Environment Texture"].outputs[0], new_nodes["Background.002"].inputs[0])
+        tree_links.new(new_nodes["Background.001"].outputs[0], new_nodes["Mix Shader"].inputs[2])
+        tree_links.new(new_nodes["Background.002"].outputs[0], new_nodes["Mix Shader"].inputs[1])
+        tree_links.new(new_nodes["Mix Shader"].outputs[0], new_nodes["World Output.001"].inputs[0])
 
     # add drivers to the input to the Vector Mapping node, connected to active_object
     vec_mapping_fcurves = []
     # create tuples so a 'for' loop can be used
-    vec_mapping_fcurves.append( (node_vec_mapping.inputs["Vector"].driver_add("default_value", 0), "location.x") )
-    vec_mapping_fcurves.append( (node_vec_mapping.inputs["Vector"].driver_add("default_value", 1), "location.y") )
-    vec_mapping_fcurves.append( (node_vec_mapping.inputs["Vector"].driver_add("default_value", 2), "location.z") )
+    vec_mapping_fcurves.append( (new_nodes["Mapping"].inputs["Vector"].driver_add("default_value", 0), "location.x") )
+    vec_mapping_fcurves.append( (new_nodes["Mapping"].inputs["Vector"].driver_add("default_value", 1), "location.y") )
+    vec_mapping_fcurves.append( (new_nodes["Mapping"].inputs["Vector"].driver_add("default_value", 2), "location.z") )
     for fc, d_path in vec_mapping_fcurves:
         v = fc.driver.variables.new()
         v.name                 = "var"
         v.targets[0].id        = context.active_object
         v.targets[0].data_path = d_path
         fc.driver.expression = v.name
-
-    # link the shader nodes
-    tree_links = scn_w.node_tree.links
-    tree_links.new(node_environment.outputs["Color"], node_background.inputs["Color"])
-    tree_links.new(node_background.outputs["Background"], node_output.inputs["Surface"])
-
-    tree_links.new(node_vec_math.outputs["Vector"], node_environment.inputs["Vector"])
-
-    # add Generated Vector (3 dimensional vector) to Vector Mapping node, Vector Mapping node uses drivers and
-    # allows user input
-    tree_links.new(node_tex_coord.outputs["Generated"], node_vec_math.inputs[0])
-    tree_links.new(node_vec_mapping.outputs["Vector"], node_vec_math.inputs[1])
 
 class OLuminWE_ObjectShaderXYZ_Map(bpy.types.Operator):
     """With selected objects, append a new shader to capture XYZ vertex coordinates and store them in two UV maps """ \

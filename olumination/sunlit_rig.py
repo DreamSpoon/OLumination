@@ -762,37 +762,49 @@ def create_sensor_material_on_obj(ob, sun_sensor_image_width, sun_sensor_image_h
     new_bake_mat = bpy.data.materials.new(name=SUNLIT_BAKE_MAT_NAME)
     new_bake_mat.use_nodes = True
 
-    # create the sensor image texture node
-    new_image_node = new_bake_mat.node_tree.nodes.new(type="ShaderNodeTexImage")
-    # new image for each new material
-    new_image_node.image = bpy.data.images.new(name=SUNLIT_BAKE_IMG_NAME, width=sun_sensor_image_width,
-        height=sun_sensor_image_height, alpha=False)
-    image_pack_image(new_image_node.image)
-
     # ---
     # Add mix shader with Backfacing input from Input-Geometry material node, to make the back-facing material dark,
     # and the front-facing material becomes the sensor material:
 
-    output_node = get_shader_node_mat_output(new_bake_mat.node_tree.nodes)
-    prev_to_output_node_socket = output_node.inputs[0].links[0].from_socket
+    # material shader nodes
+    tree_nodes = new_bake_mat.node_tree.nodes
+    tree_nodes.clear()
+    new_nodes = {}
 
-    # create the mix shader used to make back facing material color black
-    mix_shader_node = new_bake_mat.node_tree.nodes.new(type="ShaderNodeMixShader")
-    mix_shader_node.location.x += 150
-    mix_shader_node.location.y += 500
+    node = tree_nodes.new(type="ShaderNodeOutputMaterial")
+    node.location = (340, 612)
+    new_nodes["Material Output"] = node
 
-    # create geometry input node to get backfacing property
-    geom_input_node = new_bake_mat.node_tree.nodes.new(type="ShaderNodeNewGeometry")
-    geom_input_node.location.x -= 150
-    geom_input_node.location.y += 700
+    node = tree_nodes.new(type="ShaderNodeNewGeometry")
+    node.location = (-82, 628)
+    new_nodes["Geometry"] = node
 
-    # create new link from Mix Shader node output to Material Output node input
-    new_bake_mat.node_tree.links.new(mix_shader_node.outputs[0], output_node.inputs[0])
-    # create new link from Geometry Input node to Mix Shader node factor input
-    new_bake_mat.node_tree.links.new(geom_input_node.outputs[6], mix_shader_node.inputs[0])
-    # create new link from previous to Material Output to Mix Shader node shader #1 input
-    new_bake_mat.node_tree.links.new(prev_to_output_node_socket, mix_shader_node.inputs[1])
+    node = tree_nodes.new(type="ShaderNodeBsdfPrincipled")
+    node.location = (-188, 384)
+    new_nodes["Principled BSDF"] = node
 
+    node = tree_nodes.new(type="ShaderNodeTexCoord")
+    node.location = (-752, 102)
+    new_nodes["Texture Coordinate"] = node
+
+    node = tree_nodes.new(type="ShaderNodeTexImage")
+    node.location = (-552, 242)
+    # new image for each new material
+    node.image = bpy.data.images.new(name=SUNLIT_BAKE_IMG_NAME, width=sun_sensor_image_width,
+        height=sun_sensor_image_height, alpha=False)
+    image_pack_image(node.image)
+    new_nodes["Image Texture"] = node
+
+    node = tree_nodes.new(type="ShaderNodeMixShader")
+    node.location = (150, 500)
+    new_nodes["Mix Shader"] = node
+
+    # links between nodes
+    tree_links = new_bake_mat.node_tree.links
+    tree_links.new(new_nodes["Mix Shader"].outputs[0], new_nodes["Material Output"].inputs[0])
+    tree_links.new(new_nodes["Geometry"].outputs[6], new_nodes["Mix Shader"].inputs[0])
+    tree_links.new(new_nodes["Principled BSDF"].outputs[0], new_nodes["Mix Shader"].inputs[1])
+    tree_links.new(new_nodes["Texture Coordinate"].outputs[2], new_nodes["Image Texture"].inputs[0])
     #
     # ---
 
