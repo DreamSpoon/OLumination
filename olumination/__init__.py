@@ -30,7 +30,7 @@ bl_info = {
     "name": "OLumination",
     "description": "Tools for use with EEVEE and Cycles lighting, including HDRI environment lighting in EEVEE.",
     "author": "Dave",
-    "version": (0, 0, 1),
+    "version": (0, 1, 0),
     "blender": (2, 80, 0),
     "location": "View 3D -> Tools -> OLumin",
     "category": "Lighting",
