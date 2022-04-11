@@ -77,6 +77,8 @@ def create_mobile_background(context):
 
     node = tree_nodes.new(type="ShaderNodeOutputWorld")
     node.location = (646.363, 167.949)
+    if bpy.app.version >= (2,80,0):
+        node.target = "CYCLES"
     new_nodes["World Output"] = node
 
     # add EEVEE stuff
@@ -88,6 +90,7 @@ def create_mobile_background(context):
         node = tree_nodes.new(type="ShaderNodeOutputWorld")
         node.location = (787.293, -97.521)
         new_nodes["World Output.001"] = node
+        node.target = "EEVEE"
 
         node = tree_nodes.new(type="ShaderNodeLightPath")
         node.location = (162.052, -129.775)
@@ -99,6 +102,7 @@ def create_mobile_background(context):
 
         node = tree_nodes.new(type="ShaderNodeBackground")
         node.location = (406.071, -27.986)
+        node.inputs[1].default_value = 0.1
         new_nodes["Background.002"] = node
 
     # links between nodes
