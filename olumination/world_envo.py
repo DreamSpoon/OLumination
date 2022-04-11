@@ -155,6 +155,24 @@ class OLuminWE_ObjectShaderXYZ_Map(bpy.types.Operator):
                 print("Unable to create UV Maps on object: " + obj.name)
                 continue
 
+            # --- object modifier code ---
+            cam_xy, cam_xzed = add_uv_project_cameras(context)
+            proj_mod_xy, proj_mod_xzed = add_object_uv_project_mods(obj, uv_map_xy, uv_map_xzed, cam_xy, cam_xzed)
+            if scn.OLuminWE_ApplyModifiers:
+                apply_proj_modifiers(context, obj, scn.OLuminWE_CopyHideModifiers, proj_mod_xy, proj_mod_xzed, \
+                    uv_map_xy, uv_map_xzed, cam_xy, cam_xzed)
+                # delete cameras if modifiers were not 'copied', and were applied only
+                if not scn.OLuminWE_CopyHideModifiers:
+                    delete_widget_cams(cam_xy, cam_xzed)
+                    cam_xy = None
+                    cam_xzed = None
+            # if widget cameras were not deleted then hide them from view
+            if cam_xy != None:
+                set_object_hide_view(cam_xy, True)
+            if cam_xzed != None:
+                set_object_hide_view(cam_xzed, True)
+
+            #  --- shader material code ---
             if scn.OLuminWE_NewMatPerObj:
                 # create a completely new material shader and append material to each object
                 mat_shader_per_obj = create_xyz_to_uvw_mat_shader(None, uv_map_xy.name, uv_map_xzed.name, \
@@ -188,25 +206,6 @@ class OLuminWE_ObjectShaderXYZ_Map(bpy.types.Operator):
                         create_xyz_to_uvw_mat_shader(obj_mat_shader, uv_map_xy.name, uv_map_xzed.name, \
                             scn.OLuminWE_ColorTextureType)
 
-            cam_xy, cam_xzed = add_uv_project_cameras(context)
-            proj_mod_xy, proj_mod_xzed = add_object_uv_project_mods(obj, uv_map_xy, uv_map_xzed, cam_xy, cam_xzed)
-
-            if scn.OLuminWE_ApplyModifiers:
-                apply_proj_modifiers(context, obj, scn.OLuminWE_CopyHideModifiers, proj_mod_xy, proj_mod_xzed, \
-                    uv_map_xy, uv_map_xzed, cam_xy, cam_xzed)
-
-                # delete cameras if modifiers were not 'copied', and were applied only
-                if not scn.OLuminWE_CopyHideModifiers:
-                    delete_widget_cams(cam_xy, cam_xzed)
-                    cam_xy = None
-                    cam_xzed = None
-
-            # if widget cameras were not deleted then hide them from view
-            if cam_xy != None:
-                set_object_hide_view(cam_xy, True)
-            if cam_xzed != None:
-                set_object_hide_view(cam_xzed, True)
-
         return {'FINISHED'}
 
 def delete_widget_cams(cam_xy, cam_xzed):
@@ -234,15 +233,19 @@ def get_unused_uv_map_name(obj, base_map_name):
 
 # create material shader nodes, to interact with two UV maps (the XYZ to UVW map)
 def create_xyz_to_uvw_mat_shader(prev_mat_shader, xy_uvmap_name, xzed_uvmap_name, color_texture_node_type):
-    mat_shader = prev_mat_shader
-    if mat_shader == None:
-        mat_shader = bpy.data.materials.new(name="xyz_to_uvw_mat")
-    mat_shader.use_nodes = True
-    tree_nodes = mat_shader.node_tree.nodes
-
+    mat_shader = None
+    tree_nodes = None
+    # create new material shader if no previous material shader given
     if prev_mat_shader == None:
+        mat_shader = bpy.data.materials.new(name="xyz_to_uvw_mat")
+        mat_shader.use_nodes = True
         # delete all nodes from the initial object shader setup, if pre-existing material shader is not given
+        tree_nodes = mat_shader.node_tree.nodes
         tree_nodes.clear()
+    else:
+        mat_shader = prev_mat_shader
+        mat_shader.use_nodes = True
+        tree_nodes = mat_shader.node_tree.nodes
 
     # initialize variables
     new_nodes = {}

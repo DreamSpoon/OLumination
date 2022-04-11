@@ -43,11 +43,12 @@ BONE_LAYER_ONLY_2 = (False, True, False, False, False, False, False, False, Fals
     False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False,
     False, False)
 
-SUNLIT_WGT_CIRCLE_NAME = "SL_WGT_circle"
-SUNLIT_WGT_CONE_NAME = "SL_WGT_cone"
-SUNLIT_WGT_CUBE_NAME = "SL_WGT_cube"
-SUNLIT_WGT_PLANE_NAME = "SL_WGT_plane"
-SUNLIT_WGT_TRI_NAME = "SL_WGT_tri"
+SUNLIT_WGT_PREPEND = "SL_WGT_"
+SUNLIT_WGT_CIRCLE_NAME = SUNLIT_WGT_PREPEND + "circle"
+SUNLIT_WGT_CONE_NAME = SUNLIT_WGT_PREPEND + "cone"
+SUNLIT_WGT_CUBE_NAME = SUNLIT_WGT_PREPEND + "cube"
+SUNLIT_WGT_PLANE_NAME = SUNLIT_WGT_PREPEND + "plane"
+SUNLIT_WGT_TRI_NAME = SUNLIT_WGT_PREPEND + "tri"
 SUNLIT_WGT_TRI_VERTS = [
     (-1, 0, -0.6660254),
     (1, 0, -0.6660254),
@@ -538,6 +539,9 @@ def create_widget_circle(context):
     set_object_hide_render(widget_circle, True)
     return widget_circle
 
+def is_sunlit_rig_widget(obj):
+    return obj.name.startswith(SUNLIT_WGT_PREPEND)
+
 # "rig" includes armature object, widget objects, and objects parented to the armature (e.g. meshes, lights)
 def create_sunlit_rig(context, hemisphere_only, num_suns, num_sphere_subdiv, num_occluding_disks, odisk_include_sun,
         default_sun_energy, default_sun_angle, default_odisk_sun_energy, default_odisk_sun_angle, allow_drivers,
@@ -605,13 +609,15 @@ def create_sunlit_rig(context, hemisphere_only, num_suns, num_sphere_subdiv, num
     set_object_list_hide_render(diff_cubes_list, True)
     set_object_hide_view(base_sphere, True)
     set_object_hide_render(base_sphere, True)
+    set_object_list_hide_view(sun_blinds_list, True)
 
     # create occluding disks and set their default pointing directions
     if num_occluding_disks > 0:
-        create_occluding_disks(context, sl_armature, odisk_bone_name_tuples, odisk_include_sun,
+        odisk_list, odisk_blinds_list = create_occluding_disks(context, sl_armature, odisk_bone_name_tuples, odisk_include_sun,
             default_odisk_sun_energy, default_odisk_sun_angle, allow_drivers, odisk_sensor_image_width, odisk_sensor_image_height,
             odisk_blinds_len)
         set_odisk_point_at_locations(context, sl_armature, odisk_bone_name_tuples)
+        set_object_list_hide_view(odisk_blinds_list, True)
 
 def get_fibonacci_sphere_points(num_points, sphere_radius):
     points = []
@@ -779,9 +785,9 @@ def create_sensor_material_on_obj(ob, sun_sensor_image_width, sun_sensor_image_h
     node.location = (-82, 628)
     new_nodes["Geometry"] = node
 
-    node = tree_nodes.new(type="ShaderNodeBsdfPrincipled")
+    node = tree_nodes.new(type="ShaderNodeBsdfDiffuse")
     node.location = (-188, 384)
-    new_nodes["Principled BSDF"] = node
+    new_nodes["Diffuse BSDF"] = node
 
     node = tree_nodes.new(type="ShaderNodeTexCoord")
     node.location = (-752, 102)
@@ -803,7 +809,7 @@ def create_sensor_material_on_obj(ob, sun_sensor_image_width, sun_sensor_image_h
     tree_links = new_bake_mat.node_tree.links
     tree_links.new(new_nodes["Mix Shader"].outputs[0], new_nodes["Material Output"].inputs[0])
     tree_links.new(new_nodes["Geometry"].outputs[6], new_nodes["Mix Shader"].inputs[0])
-    tree_links.new(new_nodes["Principled BSDF"].outputs[0], new_nodes["Mix Shader"].inputs[1])
+    tree_links.new(new_nodes["Diffuse BSDF"].outputs[0], new_nodes["Mix Shader"].inputs[1])
     tree_links.new(new_nodes["Texture Coordinate"].outputs[2], new_nodes["Image Texture"].inputs[0])
     #
     # ---
@@ -819,6 +825,9 @@ def get_shader_node_mat_output(nodes_list):
 
 def create_occluding_disks(context, sl_arm, odisk_bone_name_tuples, odisk_include_sun, odisk_sun_energy,
         odisk_sun_angle, add_odisk_taper_driver, odisk_sensor_image_width, odisk_sensor_image_height, odisk_blinds_len):
+    odisk_list = []
+    odisk_blinds_list = []
+
     c = 0
     for odisk_pivot_bone_name, odisk_targ_bone_name, odisk_bone_name, odisk_lit_adjust_bone_name in odisk_bone_name_tuples:
         # create occluding disk from filled in circle
@@ -862,7 +871,12 @@ def create_occluding_disks(context, sl_arm, odisk_bone_name_tuples, odisk_includ
             odisk_sun.parent_bone = odisk_lit_adjust_bone_name
             set_light_angular_diameter(odisk_sun, odisk_sun_angle)
 
+        odisk_list.append(odisk)
+        odisk_blinds_list.append(odisk_blinds)
+
         c = c + 1
+
+    return odisk_list, odisk_blinds_list
 
 def add_regular_blinds_drivers(solid_mod, armature, diff_cube_bone_name, blinds_length):
     d = solid_mod.driver_add("thickness").driver
@@ -1120,14 +1134,6 @@ def get_sunlit_suns_from_selected(context):
 def get_sunlit_sensors_from_selected(context):
     return get_sunlit_objects_from_selected(context, SUNLIT_SENSOR_PLANE_PREPEND) + get_sunlit_objects_from_selected(context, SUNLIT_ODISK_PREPEND)
 
-#def get_sunlit_objects_from_all(name_prepend_str):
-#    obj_list = []
-#    # get lights from all objects list, by name - where name contains the light name prepend
-#    for obj in bpy.data.objects:
-#        if obj.name.startswith(name_prepend_str):
-#            obj_list.append(obj)
-#    return obj_list
-
 def get_sunlit_objects_from_armature(armature, bone_name, obj_name_prepend):
     total_obj_list = []
     for bone in armature.data.bones:
@@ -1188,7 +1194,7 @@ class OLuminSL_CreateRig(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        # materials creation errors occur in Blender Render and
+        # materials creation errors occur in Blender Render, so only works in Cycles
         scn = context.scene
         if bpy.app.version < (2,80,0) and (scn.render.engine == "BLENDER_RENDER" or scn.render.engine == "BLENDER_GAME"):
             self.report({'ERROR'}, "Cannot create Sunlig Rig in Blender Render or Blender Game render modes, change " +
@@ -1199,6 +1205,51 @@ class OLuminSL_CreateRig(bpy.types.Operator):
             scn.OLuminSL_ODiskSunEnergy, scn.OLuminSL_ODiskSunInitAngle, scn.OLuminSL_AllowDrivers,
             scn.OLuminSL_SunImageWidth, scn.OLuminSL_SunImageHeight, scn.OLuminSL_ODiskSunImageWidth,
             scn.OLuminSL_ODiskSunImageHeight, scn.OLuminSL_SunBlindsLen, scn.OLuminSL_ODiskSunBlindsLen)
+        return {'FINISHED'}
+
+class OLuminSL_FixRigVisibility(bpy.types.Operator):
+    """Hide widget objects used by all Sunlit Rigs. Use this if 'unhide all' was applied, and some weird things """ \
+    """are showing on Sunlit Rig. "Blinds" objects are shown for visually checking amount of angular diameter """ \
+    """given to each Sunlit sun light"""
+    bl_idname = "olumin_sl.fix_rig_visibility"
+    bl_label = "Fix All Rig Visibility"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        scn = context.scene
+        all_obj_list = get_all_objects_list()
+        for obj in all_obj_list:
+            # hide any Sunlig Rig widget objects that are found
+            if is_sunlit_rig_widget(obj):
+                set_object_hide_view(obj, True)
+                set_object_hide_render(obj, True)
+            # the rest of the code in this for loop is for Sunlit Rig armatures only
+            if not is_sunlit_armature(obj):
+                continue
+            # get objects and hide them from view
+            sphere_list = get_sunlit_objects_from_armature(obj, SUNLIT_BONE_SPHERE, SUNLIT_BASE_SPHERE_PREPEND)
+            set_object_list_hide_view(sphere_list, True)
+            set_object_list_hide_render(sphere_list, True)
+            cube_list = get_sunlit_objects_from_armature(obj, SUNLIT_BONE_DIFF_CUBE, SUNLIT_DCUBE_PREPEND)
+            set_object_list_hide_view(cube_list, True)
+            set_object_list_hide_render(cube_list, True)
+            # if hiding blinds, then hide regular blinds and ODisk blinds
+            # this code will also un-hide blinds if "Hide Blinds Too" is disabled
+            blinds_list = get_sunlit_objects_from_armature(obj, SUNLIT_BONE_DIFF_CUBE, SUNLIT_SUN_BLINDS_PREPEND)
+            set_object_list_hide_view(blinds_list, scn.OLuminSL_HideBlindsToo)
+            set_object_list_hide_render(blinds_list, False)
+            od_blinds_list = get_sunlit_objects_from_armature(obj, SUNLIT_BONE_ODISK, SUNLIT_ODISK_BLINDS_PREPEND)
+            set_object_list_hide_view(od_blinds_list, scn.OLuminSL_HideBlindsToo)
+            set_object_list_hide_render(od_blinds_list, False)
+
+            sensor_list = get_sunlit_objects_from_armature(obj, SUNLIT_BONE_SENSOR, SUNLIT_SENSOR_PLANE_PREPEND)
+            set_object_list_hide_view(sensor_list, False)
+            set_object_list_hide_render(sensor_list, False)
+
+            od_sensor_list = get_sunlit_objects_from_armature(obj, SUNLIT_BONE_ODISK, SUNLIT_ODISK_PREPEND)
+            set_object_list_hide_view(od_sensor_list, False)
+            set_object_list_hide_render(od_sensor_list, False)
+
         return {'FINISHED'}
 
 class OLuminSL_BakeSelectedSensors(bpy.types.Operator):
@@ -1392,7 +1443,8 @@ class OLuminSL_SelectRigODiskLights(bpy.types.Operator):
         return {'FINISHED'}
 
 class OLuminSL_PointRegularFromView(bpy.types.Operator):
-    """Given the regular sun number, align the selected Sunlit Rig's regular sun pointing direction with the current 3DView direction"""
+    """Point the Regular sun light in the same direction as the current viewport view direction / camera view """ \
+    """direction. Sun light numbers are zero-indexed, so '0' is the first ODisk, '1' is the second ODisk, etc"""
     bl_idname = "olumin_sl.point_regular_from_view"
     bl_label = "Set Regular Direction from View"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1408,14 +1460,19 @@ class OLuminSL_PointRegularFromView(bpy.types.Operator):
                 point_target_bone = ob.pose.bones.get(any_prepend_name_num(SUNLIT_BONE_SUN_TARGET, regular_num))
                 if point_target_bone is None:
                     continue
-                point_target_bone.location[0] = view_dir[0] * 2
-                point_target_bone.location[1] = view_dir[1] * 2
-                point_target_bone.location[2] = view_dir[2] * 2
+                # reverse direction if needed
+                mult = 1
+                if scn.OLuminSL_ReverseLightPointDirection:
+                    mult = -1
+                point_target_bone.location[0] = view_dir[0] * 2 * mult
+                point_target_bone.location[1] = view_dir[1] * 2 * mult
+                point_target_bone.location[2] = view_dir[2] * 2 * mult
 
         return {'FINISHED'}
 
 class OLuminSL_PointODiskFromView(bpy.types.Operator):
-    """Given the ODisk number, align the selected Sunlit Rig's ODisk pointing direction with the current 3DView direction"""
+    """Point the ODisk sun light in the same direction as the current viewport view direction / camera view """ \
+    """direction. ODisk numbers are zero-indexed, so '0' is the first ODisk, '1' is the second ODisk, etc"""
     bl_idname = "olumin_sl.point_odisk_from_view"
     bl_label = "Set ODisk Direction from View"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1431,8 +1488,12 @@ class OLuminSL_PointODiskFromView(bpy.types.Operator):
                 point_target_bone = ob.pose.bones.get(any_prepend_name_num(SUNLIT_BONE_ODISK_TARGET, odisk_num))
                 if point_target_bone is None:
                     continue
-                point_target_bone.location[0] = view_dir[0] * 2
-                point_target_bone.location[1] = view_dir[1] * 2
-                point_target_bone.location[2] = view_dir[2] * 2
+                # reverse direction if needed
+                mult = 1
+                if scn.OLuminSL_ReverseLightPointDirection:
+                    mult = -1
+                point_target_bone.location[0] = view_dir[0] * 2 * mult
+                point_target_bone.location[1] = view_dir[1] * 2 * mult
+                point_target_bone.location[2] = view_dir[2] * 2 * mult
 
         return {'FINISHED'}

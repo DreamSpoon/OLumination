@@ -39,11 +39,11 @@ bl_info = {
 import math
 import bpy
 
-from .sunlit_rig import (OLuminSL_CreateRig, OLuminSL_BakeSelectedSensors, OLuminSL_BakeRigSensors,
-    OLuminSL_SensorImagePack, OLuminSL_SetSelectSunColor, OLuminSL_SetRigSunColor, OLuminSL_SetSelectSunAngle,
-    OLuminSL_SetRigSunAngle, OLuminSL_SelectVisibleRigs, OLuminSL_SelectAllRigs, OLuminSL_SelectRigRegularSensors,
-    OLuminSL_SelectRigODiskSensors, OLuminSL_SelectRigRegularLights, OLuminSL_SelectRigODiskLights,
-    OLuminSL_PointRegularFromView, OLuminSL_PointODiskFromView)
+from .sunlit_rig import (OLuminSL_CreateRig, OLuminSL_FixRigVisibility, OLuminSL_BakeSelectedSensors,
+    OLuminSL_BakeRigSensors, OLuminSL_SensorImagePack, OLuminSL_SetSelectSunColor, OLuminSL_SetRigSunColor,
+    OLuminSL_SetSelectSunAngle, OLuminSL_SetRigSunAngle, OLuminSL_SelectVisibleRigs, OLuminSL_SelectAllRigs,
+    OLuminSL_SelectRigRegularSensors, OLuminSL_SelectRigODiskSensors, OLuminSL_SelectRigRegularLights,
+    OLuminSL_SelectRigODiskLights, OLuminSL_PointRegularFromView, OLuminSL_PointODiskFromView)
 from .proxy_metric import OLuminPM_CreateSimpleHumanProxy
 from .light_color import OLuminLC_ColorMath
 from .light_energy import OLuminLE_MathLightEnergy
@@ -105,6 +105,16 @@ class OLUMIN_PT_SunlitRigOther(bpy.types.Panel):
         box = layout.box()
         box.prop(scn, "OLuminSL_OtherAdvancedOptions")
         box = layout.box()
+        box.operator("olumin_sl.fix_rig_visibility")
+        box.prop(scn, "OLuminSL_HideBlindsToo")
+        box = layout.box()
+        box.label(text="Point Light with View Center")
+        box.operator("olumin_sl.point_regular_from_view")
+        box.prop(scn, "OLuminSL_RegularNumPointFromView")
+        box.operator("olumin_sl.point_odisk_from_view")
+        box.prop(scn, "OLuminSL_ODiskNumPointFromView")
+        box.prop(scn, "OLuminSL_ReverseLightPointDirection")
+        box = layout.box()
         box.label(text="Rig Sensor Input")
         box.operator("olumin_sl.bake_selected_sensors")
         box.operator("olumin_sl.bake_rig_sensors")
@@ -134,13 +144,6 @@ class OLUMIN_PT_SunlitRigOther(bpy.types.Panel):
         box.operator("olumin_sl.select_rig_odisk_sensors")
         box.operator("olumin_sl.select_rig_regular_lights")
         box.operator("olumin_sl.select_rig_odisk_lights")
-        box = layout.box()
-        box.label(text="ODisk Point Direction")
-        box.operator("olumin_sl.point_regular_from_view")
-        box.prop(scn, "OLuminSL_RegularNumPointFromView")
-        box.operator("olumin_sl.point_odisk_from_view")
-        box.prop(scn, "OLuminSL_ODiskNumPointFromView")
-        ##box.prop(scn, "OLuminSL_DeselectFirst")   # boolean, deselect objects before selecting desired objects
 
 class OLUMIN_PT_LightColor(bpy.types.Panel):
     bl_label = "EEVEE Light Color"
@@ -224,6 +227,7 @@ classes = [
     OLUMIN_PT_SunlitRigCreate,
     OLuminSL_CreateRig,
     OLUMIN_PT_SunlitRigOther,
+    OLuminSL_FixRigVisibility,
     OLuminSL_BakeSelectedSensors,
     OLuminSL_BakeRigSensors,
     OLuminSL_SensorImagePack,
@@ -307,6 +311,9 @@ def register_props():
     bts.OLuminSL_OtherAdvancedOptions = bp.BoolProperty(name="Advanced Options", description="Show advanced options " +
         "for Sunlig Rig Other panel", default=False)
 
+    bts.OLuminSL_HideBlindsToo = bp.BoolProperty(name="Hide Blinds", description="Hide blinds objects from view " +
+        "(blinds will still be visible in renders)", default=True)
+
     bts.OLuminSL_BakeSamples = bp.IntProperty(name="Custom Bake Samples", description="Render sample value to use " +
         "while baking sensor images only. Cycles render sample count is temporarily changed during sensor image bake",
         default=128, min=1)
@@ -337,6 +344,10 @@ def register_props():
         "sun for which pointing direction must be aligned with view center direction", default=0, min=0)
     bts.OLuminSL_ODiskNumPointFromView = bp.IntProperty(name="ODisk Index", description="Index of ODisk for which " +
         "pointing direction must be aligned with view center direction", default=0, min=0)
+
+    bts.OLuminSL_ReverseLightPointDirection = bp.BoolProperty(name="Reverse Light Point Direction",
+        description="Reverse the regular 'point at' direction, so light points away from view/camera center",
+        default=False)
 
     bts.OLuminLC_MathFunction = bp.EnumProperty(
         items = [
