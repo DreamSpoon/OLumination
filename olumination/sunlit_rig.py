@@ -29,15 +29,17 @@ else:
 
 SUNLIT_FIX_DIFF_CUBE_LOC = (0, -0.3, 0)
 
-SUNLIT_PREPEND_NAME = "Sunlit"
-SUNLIT_BASE_SPHERE_PREPEND = SUNLIT_PREPEND_NAME + "BaseSphere"
-SUNLIT_DCUBE_PREPEND = SUNLIT_PREPEND_NAME + "DiffCube"
-SUNLIT_SUN_BLINDS_PREPEND = SUNLIT_PREPEND_NAME + "Blinds"
-SUNLIT_SENSOR_PLANE_PREPEND = SUNLIT_PREPEND_NAME + "Sensor"
-SUNLIT_SUN_PREPEND = SUNLIT_PREPEND_NAME + "Light"
-SUNLIT_ODISK_PREPEND = SUNLIT_PREPEND_NAME + "ODiskSensor"
-SUNLIT_ODISK_BLINDS_PREPEND = SUNLIT_PREPEND_NAME + "ODiskBlinds"
-SUNLIT_ODISK_SUN_PREPEND = SUNLIT_PREPEND_NAME + "ODiskLight"
+SUNLIT_NAME_PREPEND = "Sunlit"
+SUNLIT_BASE_SPHERE_PREPEND = SUNLIT_NAME_PREPEND + "BaseSphere"
+SUNLIT_DCUBE_PREPEND = SUNLIT_NAME_PREPEND + "DiffCube"
+SUNLIT_SUN_BLINDS_PREPEND = SUNLIT_NAME_PREPEND + "Blinds"
+SUNLIT_SENSOR_PLANE_PREPEND = SUNLIT_NAME_PREPEND + "Sensor"
+SUNLIT_SUN_PREPEND = SUNLIT_NAME_PREPEND + "Light"
+SUNLIT_ODISK_PREPEND = SUNLIT_NAME_PREPEND + "ODiskSensor"
+SUNLIT_ODISK_BLINDS_PREPEND = SUNLIT_NAME_PREPEND + "ODiskBlinds"
+SUNLIT_ODISK_SUN_PREPEND = SUNLIT_NAME_PREPEND + "ODiskLight"
+SUNLIT_CAMERA_PREPEND = SUNLIT_NAME_PREPEND + "Camera"
+SUNLIT_CAMERA_TTC_PREPEND = SUNLIT_NAME_PREPEND + "CameraTTC"
 
 BONE_LAYER_ONLY_2 = (False, True, False, False, False, False, False, False, False, False, False, False, False, False,
     False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False,
@@ -297,6 +299,13 @@ def get_num_from_name(name_str):
             return int(possible_digits)
     return 0
 
+# search all objects, by way of "bpy.data.objects", to get list of objects parented to obj
+def get_objects_parented_to(obj, obj_name_prepend):
+    found_obj_list = []
+    for test_obj in bpy.data.objects:
+        if test_obj.name.startswith(obj_name_prepend) and test_obj.parent == obj:
+            found_obj_list.append(test_obj)
+    return found_obj_list
 
 # search all objects, by way of "bpy.data.objects", to get list of objects "bone parented" to armature's bone
 def get_objects_parented_to_bone(armature, bone_name, obj_name_prepend):
@@ -359,7 +368,7 @@ def create_sunlit_armature(context, num_sun_lights, num_occluding_disks):
     widget_tri = create_widget_triangle(context)
     widget_plane = create_widget_plane(context)
     widget_cone = create_widget_cone(context)
-    widget_circle = create_widget_circle(context)
+    widget_circle = create_base_circle(context)
 
     old_3dview_mode = context.object.mode
 
@@ -528,7 +537,7 @@ def create_widget_cone(context):
     set_object_hide_render(widget_cone, True)
     return widget_cone
 
-def create_widget_circle(context):
+def create_base_circle(context):
     bpy.ops.mesh.primitive_circle_add(radius=0.3, location=(0, 0, 0))
     widget_circle = context.active_object
     widget_circle.rotation_euler = (math.radians(270), 0, 0)
@@ -618,6 +627,31 @@ def create_sunlit_rig(context, hemisphere_only, num_suns, num_sphere_subdiv, num
             odisk_blinds_len)
         set_odisk_point_at_locations(context, sl_armature, odisk_bone_name_tuples)
         set_object_list_hide_view(odisk_blinds_list, True)
+
+    # create camera, to use for setting ODisk sizes
+    create_sunlit_rig_camera(context, sl_armature)
+
+def create_sunlit_rig_camera(context, sl_armature):
+    bpy.ops.object.camera_add(location=(0, 0, 0), rotation=(0, 0, 0))
+    rig_cam = context.active_object
+    rig_cam.name = SUNLIT_CAMERA_PREPEND
+    rig_cam.parent = sl_armature
+    set_object_hide_view(rig_cam, True)
+    tt_const = rig_cam.constraints.new(type="TRACK_TO")
+    tt_const.name = SUNLIT_CAMERA_TTC_PREPEND
+    tt_const.track_axis = "TRACK_NEGATIVE_Z"
+    tt_const.up_axis = "UP_Y"
+
+def set_sunlit_cam_odisk_target(sl_armature, odisk_num):
+    cam_list = get_objects_parented_to(sl_armature, SUNLIT_CAMERA_PREPEND)
+    obj_list = get_objects_parented_to_bone(sl_armature, any_prepend_name_num(SUNLIT_BONE_ODISK, odisk_num), SUNLIT_ODISK_PREPEND)
+    if len(cam_list) < 1 or len(obj_list) < 1:
+        print("cam is None or obj_target is None")
+        return
+
+    tt_const = cam_list[0].constraints.get(SUNLIT_CAMERA_TTC_PREPEND)
+    if tt_const != None:
+        tt_const.target = obj_list[0]
 
 def get_fibonacci_sphere_points(num_points, sphere_radius):
     points = []
@@ -1250,6 +1284,9 @@ class OLuminSL_FixRigVisibility(bpy.types.Operator):
             set_object_list_hide_view(od_sensor_list, False)
             set_object_list_hide_render(od_sensor_list, False)
 
+            rig_cam = get_objects_parented_to(obj, SUNLIT_CAMERA_PREPEND)
+            set_object_hide_view(rig_cam, True)
+
         return {'FINISHED'}
 
 class OLuminSL_BakeSelectedSensors(bpy.types.Operator):
@@ -1496,4 +1533,19 @@ class OLuminSL_PointODiskFromView(bpy.types.Operator):
                 point_target_bone.location[1] = view_dir[1] * 2 * mult
                 point_target_bone.location[2] = view_dir[2] * 2 * mult
 
+        return {'FINISHED'}
+
+class OLuminSL_PointCamAtODisk(bpy.types.Operator):
+    """Use this to help matching background sun size with ODisk size. Point Sunlit Rig's test camera at ODisk """ \
+    """given by ODisk number. ODisk numbers are zero-indexed, so '0' is the first ODisk, '1' is the second ODisk, etc"""
+    bl_idname = "olumin_sl.point_cam_at_odisk"
+    bl_label = "Point Cam at ODisk"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        act_ob = context.active_object
+        if not is_sunlit_armature(act_ob):
+            print("not sunlit armature, no looks")
+            return {'FINISHED'}
+        set_sunlit_cam_odisk_target(act_ob, context.scene.OLuminSL_ODiskNumPointFromView)
         return {'FINISHED'}

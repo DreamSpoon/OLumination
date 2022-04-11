@@ -43,8 +43,8 @@ from .sunlit_rig import (OLuminSL_CreateRig, OLuminSL_FixRigVisibility, OLuminSL
     OLuminSL_BakeRigSensors, OLuminSL_SensorImagePack, OLuminSL_SetSelectSunColor, OLuminSL_SetRigSunColor,
     OLuminSL_SetSelectSunAngle, OLuminSL_SetRigSunAngle, OLuminSL_SelectVisibleRigs, OLuminSL_SelectAllRigs,
     OLuminSL_SelectRigRegularSensors, OLuminSL_SelectRigODiskSensors, OLuminSL_SelectRigRegularLights,
-    OLuminSL_SelectRigODiskLights, OLuminSL_PointRegularFromView, OLuminSL_PointODiskFromView)
-from .proxy_metric import OLuminPM_CreateSimpleHumanProxy
+    OLuminSL_SelectRigODiskLights, OLuminSL_PointRegularFromView, OLuminSL_PointODiskFromView, OLuminSL_PointCamAtODisk)
+from .proxy_metric import OLuminPM_CreateSimpleHumanProxy, OLuminPM_DropVertex
 from .light_color import OLuminLC_ColorMath
 from .light_energy import OLuminLE_MathLightEnergy
 from .world_envo import OLuminWE_MobileBackground, OLuminWE_ObjectShaderXYZ_Map
@@ -112,6 +112,7 @@ class OLUMIN_PT_SunlitRigOther(bpy.types.Panel):
         box.operator("olumin_sl.point_regular_from_view")
         box.prop(scn, "OLuminSL_RegularNumPointFromView")
         box.operator("olumin_sl.point_odisk_from_view")
+        box.operator("olumin_sl.point_cam_at_odisk")
         box.prop(scn, "OLuminSL_ODiskNumPointFromView")
         box.prop(scn, "OLuminSL_ReverseLightPointDirection")
         box = layout.box()
@@ -223,6 +224,17 @@ class OLUMIN_PT_WorldEnvo(bpy.types.Panel):
         sub.active = scn.OLuminWE_ApplyModifiers
         sub.prop(scn, "OLuminWE_CopyHideModifiers")
 
+class OLUMIN_MT_menu(bpy.types.Menu):
+    bl_idname = 'object.olumin.menu'
+    bl_label = 'OLumination operators'
+
+    def draw(self, context):
+        layout = self.layout
+        layout.operator(OLuminPM_DropVertex.bl_idname)
+
+def menu_func(self, context):
+    self.layout.menu(OLUMIN_MT_menu.bl_idname)
+
 classes = [
     OLUMIN_PT_SunlitRigCreate,
     OLuminSL_CreateRig,
@@ -243,22 +255,30 @@ classes = [
     OLuminSL_SelectRigODiskLights,
     OLuminSL_PointRegularFromView,
     OLuminSL_PointODiskFromView,
+    OLuminSL_PointCamAtODisk,
     OLUMIN_PT_LightColor,
     OLuminLC_ColorMath,
     OLUMIN_PT_LightEnergy,
     OLuminLE_MathLightEnergy,
     OLUMIN_PT_ProxyMetric,
     OLuminPM_CreateSimpleHumanProxy,
+    OLuminPM_DropVertex,
     OLUMIN_PT_WorldEnvo,
     OLuminWE_MobileBackground,
     OLuminWE_ObjectShaderXYZ_Map,
+    OLUMIN_MT_menu,
 ]
 
 def register():
+    bpy.types.VIEW3D_MT_object.append(menu_func)
     for cls in classes:
         bpy.utils.register_class(cls)
-
     register_props()
+
+def unregister():
+    bpy.types.VIEW3D_MT_object.remove(menu_func)
+    for cls in classes:
+        bpy.utils.unregister_class(cls)
 
 def register_props():
     bts = bpy.types.Scene
@@ -407,10 +427,6 @@ def register_props():
 
     bts.OLuminWE_ColorTextureType =  bp.EnumProperty(name="Color Texture Type", description="Type of node to " +
         "create for color input to Principled BSDF", items=COLOR_TEXTURE_TYPES, default="ShaderNodeTexNoise")
-
-def unregister():
-    for cls in classes:
-        bpy.utils.unregister_class(cls)
 
 if __name__ == "__main__":
     register()

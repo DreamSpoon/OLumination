@@ -21,6 +21,7 @@ Various functions to use with a Sunlit Rig, e.g.
   - set 3D angles of suns / occluding disks using from middle of 3DView window (where you are looking), or Camera's point of view
 
 ### Proxy Metric
+Proxy Metric is still under construction, may be weird.
 One button to create human sized rig, to estimate distances to points in HDRI background, to re-create geometry in HDRI.
 E.g. use with "outdoor" HDRIs to re-create ground, hills, houses, etc.
 Note: This function requires the Rigify addon to be enabled. Rigify is included with Blender, so enable the addon:
