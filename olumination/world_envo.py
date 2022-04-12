@@ -135,6 +135,25 @@ def create_mobile_background(context):
         v.targets[0].data_path = d_path
         fc.driver.expression = v.name
 
+
+
+
+
+
+#
+    bts.OLuminWE_ReuseCameras = bp.BoolProperty(name="Reuse Cameras", description="Try to re-use existing cameras " +
+        "(found by name) for projecting XYZ to UVW", default=True)
+    bts.OLuminWE_ReuseCameraNameXY = bp.StringProperty(name="XY Cam name", description="Name of camera to use for " +
+        "XY projection, as part of the XYZ to UVW projection process")
+    bts.OLuminWE_ReuseCameraNameXZ = bp.StringProperty(name="XZ Cam name", description="Name of camera to use for " +
+        "XZ projection, as part of the XYZ to UVW projection process")
+#
+
+
+
+
+
+
 class OLuminWE_ObjectShaderXYZ_Map(bpy.types.Operator):
     """With selected objects, append a new shader to capture XYZ vertex coordinates and store them in two UV maps """ \
     """for resultant XYZ -> UVW mapping. E.g. Use when applying noise texture node to a mesh that will be deformed by """ \
@@ -145,6 +164,16 @@ class OLuminWE_ObjectShaderXYZ_Map(bpy.types.Operator):
 
     def execute(self, context):
         scn = context.scene
+
+        existing_cam_xy = None
+        existing_cam_xzed = None
+        if scn.OLuminWE_ReuseCameraNameXY != "":
+            test_cam = context.objects.get(scn.OLuminWE_ReuseCameraNameXY)
+            existing_cam_xy = test_cam
+        if scn.OLuminWE_ReuseCameraNameXZ != "":
+            test_cam = context.objects.get(scn.OLuminWE_ReuseCameraNameXZ)
+            existing_cam_xzed = test_cam
+        original_cam_xy, original_cam_xzed = existing_cam_xy, existing_cam_xzed
 
         # initialize the nested-dictionary of (string, string) combinations of (uv_map_xy.name, uv_map_xzed.name)
         # pointing to material shaders
@@ -158,63 +187,80 @@ class OLuminWE_ObjectShaderXYZ_Map(bpy.types.Operator):
             if uv_map_xy is None or uv_map_xzed is None:
                 print("Unable to create UV Maps on object: " + obj.name)
                 continue
+            saved_uv_map_xy_name = uv_map_xy.name
+            saved_uv_map_xzed_name = uv_map_xzed.name
 
+            cam_xy, cam_xzed = None, None
+            if scn.OLuminWE_ReuseCameras:
+                cam_xy, cam_xzed = existing_cam_xy, existing_cam_xzed
+            if cam_xy == None:
+                cam_xy = add_uv_project_camera(context, "XY")
+                if scn.OLuminWE_ReuseCameras:
+                    existing_cam_xy = cam_xy
+            if cam_xzed == None:
+                cam_xzed = add_uv_project_camera(context, "XZ")
+                if scn.OLuminWE_ReuseCameras:
+                    existing_cam_xzed = cam_xzed
             # --- object modifier code ---
-            cam_xy, cam_xzed = add_uv_project_cameras(context)
             proj_mod_xy, proj_mod_xzed = add_object_uv_project_mods(obj, uv_map_xy, uv_map_xzed, cam_xy, cam_xzed)
             if scn.OLuminWE_ApplyModifiers:
                 apply_proj_modifiers(context, obj, scn.OLuminWE_CopyHideModifiers, proj_mod_xy, proj_mod_xzed, \
                     uv_map_xy, uv_map_xzed, cam_xy, cam_xzed)
                 # delete cameras if modifiers were not 'copied', and were applied only
                 if not scn.OLuminWE_CopyHideModifiers:
-                    delete_widget_cams(cam_xy, cam_xzed)
+                    # if a pre-existing camera wasn't used, then delete the widget cam
+                    if cam_xy != None and cam_xy != original_cam_xy:
+                        delete_widget_cam(cam_xy)
+                    # if a pre-existing camera wasn't used, then delete the widget cam
+                    if cam_xzed != None and cam_xzed != original_cam_xzed:
+                        delete_widget_cam(cam_xzed)
                     cam_xy = None
                     cam_xzed = None
-            # if widget cameras were not deleted then hide them from view
+
+            #  --- shader material code ---
+            if scn.OLuminWE_NewMatPerObj:
+                # create a completely new material shader and append material to each object
+                mat_shader_per_obj = create_xyz_to_uvw_mat_shader(None, saved_uv_map_xy_name, saved_uv_map_xzed_name, \
+                    scn.OLuminWE_ColorTextureType)
+                obj.data.materials.append(mat_shader_per_obj)
+            else:
+                # add to existing material shader if it exists
+                if scn.OLuminWE_AddToExisting and obj.active_material != None:
+                    create_xyz_to_uvw_mat_shader(obj.active_material, saved_uv_map_xy_name, saved_uv_map_xzed_name, \
+                        scn.OLuminWE_ColorTextureType)
+                # otherwise, try to get previous material shader with UV map names matching this object's UV map names
+                # (the XY and XZ 'UV Maps')
+                else:
+                    # check if current combination of (uv_map_xy.name, uv_map_xzed.name) have been used, and get
+                    # that material
+
+                    xy_name_dictionary = grp_mat_shaders.get(saved_uv_map_xy_name)
+                    if xy_name_dictionary is None:
+                        # create the dictionary linked to the unique uv_map_xy.name
+                        grp_mat_shaders[saved_uv_map_xy_name] = {}
+                        xy_name_dictionary = grp_mat_shaders[saved_uv_map_xy_name]
+                    obj_mat_shader = xy_name_dictionary.get(saved_uv_map_xzed_name)
+                    if obj_mat_shader is None:
+                        # create the mat because it wasn't found in the name combinations nested-dictionary
+                        obj_mat_shader = create_xyz_to_uvw_mat_shader(None, saved_uv_map_xy_name, saved_uv_map_xzed_name, \
+                            scn.OLuminWE_ColorTextureType)
+                        # add the material to the nested-dictionary, for use later if needed
+                        # this will reduce the amount of redundant material shaders created
+                        xy_name_dictionary[saved_uv_map_xzed_name] = obj_mat_shader
+                    # append the new material shader
+                    obj.data.materials.append(obj_mat_shader)
+
+            # if widget cameras were not deleted then ensure they are hidden from view
             if cam_xy != None:
                 set_object_hide_view(cam_xy, True)
             if cam_xzed != None:
                 set_object_hide_view(cam_xzed, True)
 
-            #  --- shader material code ---
-            if scn.OLuminWE_NewMatPerObj:
-                # create a completely new material shader and append material to each object
-                mat_shader_per_obj = create_xyz_to_uvw_mat_shader(None, uv_map_xy.name, uv_map_xzed.name, \
-                    scn.OLuminWE_ColorTextureType)
-                obj.data.materials.append(mat_shader_per_obj)
-            else:
-                if scn.OLuminWE_AddToExisting and obj.active_material != None:
-                    create_xyz_to_uvw_mat_shader(obj.active_material, uv_map_xy.name, uv_map_xzed.name, \
-                        scn.OLuminWE_ColorTextureType)
-                else:
-                    # check if current combination of (uv_map_xy.name, uv_map_xzed.name) have been used, and get
-                    # that material
-
-                    xy_name_dictionary = grp_mat_shaders.get(uv_map_xy.name)
-                    if xy_name_dictionary is None:
-                        # create the dictionary linked to the unique uv_map_xy.name
-                        grp_mat_shaders[uv_map_xy.name] = {}
-                        xy_name_dictionary = grp_mat_shaders[uv_map_xy.name]
-                    obj_mat_shader = xy_name_dictionary.get(uv_map_xzed.name)
-                    if obj_mat_shader is None:
-                        # create the mat because it wasn't found in the name combinations nested-dictionary
-                        obj_mat_shader = create_xyz_to_uvw_mat_shader(None, uv_map_xy.name, uv_map_xzed.name, \
-                            scn.OLuminWE_ColorTextureType)
-                        # add the material to the nested-dictionary, for use later if needed
-                        # this will reduce the amount of redundant material shaders created
-                        xy_name_dictionary[uv_map_xzed.name] = obj_mat_shader
-                        # append the new material shader
-                        obj.data.materials.append(obj_mat_shader)
-                    else:
-                        # add the nodes to the pre-existing material shader
-                        create_xyz_to_uvw_mat_shader(obj_mat_shader, uv_map_xy.name, uv_map_xzed.name, \
-                            scn.OLuminWE_ColorTextureType)
-
         return {'FINISHED'}
 
-def delete_widget_cams(cam_xy, cam_xzed):
+def delete_widget_cam(wgt_cam):
     bpy.ops.object.select_all(action='DESELECT')
-    select_object(cam_xy)
+    select_object(wgt_cam)
     select_object(cam_xzed)
     bpy.ops.object.delete()
 
@@ -308,23 +354,25 @@ def create_xyz_to_uvw_mat_shader(prev_mat_shader, xy_uvmap_name, xzed_uvmap_name
 
     return mat_shader
 
-def add_uv_project_cameras(context):
-    bpy.ops.object.camera_add(location=(0, 0, 0), rotation=(0, 0, 0))
-    cam_xy = context.active_object
-    cam_xy.data.type = "ORTHO"
-    cam_xy.data.ortho_scale = 1.0
-    # Offset by 0.5 in all dimensions, this seems to relate to:
-    #     (0.5, 0.5) is middle in UV coordinates, and
-    #     (0, 0, 0) is middle in XYZ coordinates.
-    cam_xy.location = (0.5, 0.5, 0.5)
-
-    bpy.ops.object.camera_add(location=(0, 0, 0), rotation=(math.radians(90), 0, 0))
-    cam_xzed = context.active_object
-    cam_xzed.data.type = "ORTHO"
-    cam_xzed.data.ortho_scale = 1.0
-    cam_xzed.location = (0.5, 0.5, 0.5)
-
-    return cam_xy, cam_xzed
+def add_uv_project_camera(context, proj_type):
+    if proj_type == "XY":
+        bpy.ops.object.camera_add(location=(0, 0, 0), rotation=(0, 0, 0))
+        cam_xy = context.active_object
+        cam_xy.data.type = "ORTHO"
+        cam_xy.data.ortho_scale = 1.0
+        # Offset by 0.5 in all dimensions, this seems to relate to:
+        #     (0.5, 0.5) is middle in UV coordinates, and
+        #     (0, 0, 0) is middle in XYZ coordinates.
+        cam_xy.location = (0.5, 0.5, 0.5)
+        return cam_xy
+    elif proj_type == "XZ":
+        bpy.ops.object.camera_add(location=(0, 0, 0), rotation=(math.radians(90), 0, 0))
+        cam_xzed = context.active_object
+        cam_xzed.data.type = "ORTHO"
+        cam_xzed.data.ortho_scale = 1.0
+        cam_xzed.location = (0.5, 0.5, 0.5)
+        return cam_xzed
+    return None
 
 # project the XYZ coordinates to UVW coordinates
 # two UV maps give 4 coordinates (1 is wasted!), and use 3 coordinates to store (X, Y, Z) as (U1, V1, U2)

@@ -223,6 +223,10 @@ class OLUMIN_PT_WorldEnvo(bpy.types.Panel):
         sub = box.column()
         sub.active = scn.OLuminWE_ApplyModifiers
         sub.prop(scn, "OLuminWE_CopyHideModifiers")
+        box.prop(scn, "OLuminWE_ReuseCameras")
+        sub.active = scn.OLuminWE_ReuseCameras
+        sub.prop(scn, "OLuminWE_ReuseCameraNameXY")
+        sub.prop(scn, "OLuminWE_ReuseCameraNameXZ")
 
 class OLUMIN_MT_menu(bpy.types.Menu):
     bl_idname = 'object.olumin.menu'
@@ -412,21 +416,27 @@ def register_props():
     bts.OLuminLE_MathInputValue = bp.FloatProperty(name="Input Value", description="The energy value of the " +
         "selected light(s) will be math'ed with this number, according to Math Function", default=1.0)
 
+    bts.OLuminWE_ColorTextureType =  bp.EnumProperty(name="Color Texture Type", description="Type of node to " +
+        "create for color input to Principled BSDF", items=COLOR_TEXTURE_TYPES, default="ShaderNodeTexNoise")
+
     bts.OLuminWE_NewMatPerObj = bp.BoolProperty(name="Material per Object", description="Create a new material " +
         "shader for each object, instead of grouping object shaders, i.e. each object's material shader is " +
         "independent of all other objects' material shader(s)", default=False)
     bts.OLuminWE_AddToExisting = bp.BoolProperty(name="Add to Existing Material", description="If enabled, try to " +
         "add shader nodes to object's currently active material. If not enabled, create a new material shader on " +
         "the object, appended after current material(s) on the object", default=False)
-
     bts.OLuminWE_ApplyModifiers = bp.BoolProperty(name="Apply Modifiers", description="Apply 'UV Project' " +
         "modifiers to the UV Maps. I.e. Doing this will save a copy of the XYZ coordinates of each vertex into " +
         "the two UV Maps (XY and XZ maps)", default=True)
     bts.OLuminWE_CopyHideModifiers = bp.BoolProperty(name="Copy and Hide Modifiers", description="Enable this to " +
         "keep a copy of the UV Project modifiers on the selected object(s) after applying them once", default=True)
 
-    bts.OLuminWE_ColorTextureType =  bp.EnumProperty(name="Color Texture Type", description="Type of node to " +
-        "create for color input to Principled BSDF", items=COLOR_TEXTURE_TYPES, default="ShaderNodeTexNoise")
+    bts.OLuminWE_ReuseCameras = bp.BoolProperty(name="Reuse Cameras", description="Try to re-use existing cameras " +
+        "(found by name) for projecting XYZ to UVW", default=True)
+    bts.OLuminWE_ReuseCameraNameXY = bp.StringProperty(name="XY Cam name", description="Name of camera to use for " +
+        "XY projection, as part of the XYZ to UVW projection process")
+    bts.OLuminWE_ReuseCameraNameXZ = bp.StringProperty(name="XZ Cam name", description="Name of camera to use for " +
+        "XZ projection, as part of the XYZ to UVW projection process")
 
 if __name__ == "__main__":
     register()
