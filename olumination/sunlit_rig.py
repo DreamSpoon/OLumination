@@ -1284,8 +1284,9 @@ class OLuminSL_FixRigVisibility(bpy.types.Operator):
             set_object_list_hide_view(od_sensor_list, False)
             set_object_list_hide_render(od_sensor_list, False)
 
-            rig_cam = get_objects_parented_to(obj, SUNLIT_CAMERA_PREPEND)
-            set_object_hide_view(rig_cam, True)
+            rig_cam_list = get_objects_parented_to(obj, SUNLIT_CAMERA_PREPEND)
+            for rig_cam in rig_cam_list:
+                set_object_hide_view(rig_cam, True)
 
         return {'FINISHED'}
 
