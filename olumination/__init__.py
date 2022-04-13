@@ -47,8 +47,9 @@ from .sunlit_rig import (OLuminSL_CreateRig, OLuminSL_FixRigVisibility, OLuminSL
 from .proxy_metric import (OLuminPM_CreateSimpleHumanProxy, OLuminPM_DropVertex)
 from .light_color import OLuminLC_ColorMath
 from .light_energy import OLuminLE_MathLightEnergy
-from .world_envo import (OLuminWE_MobileBackground, OLuminWE_ObjectShaderXYZMap, OLuminWE_FixXYZCameras,
-    WE_CAMERA_NAME_XY, WE_CAMERA_NAME_XZED)
+from .world_envo import OLuminWE_MobileBackground
+from .xyz_to_uvw import (OLuminXTU_ObjectShaderXYZMap, OLuminXTU_FixXYZCameras,
+    XTU_CAMERA_NAME_XY, XTU_CAMERA_NAME_XZED, XTU_XY_MAP_NAME, XTU_XZED_MAP_NAME)
 
 AngularDiameterEnabled = False
 if bpy.app.version < (2,80,0):
@@ -204,32 +205,54 @@ class OLUMIN_PT_WorldEnvo(bpy.types.Panel):
     bl_options = {'DEFAULT_CLOSED'}
 
     def draw(self, context):
-        scn = context.scene
         layout = self.layout
         box = layout.box()
         box.label(text="World Material Shader")
         box.operator("olumin_we.mobile_background")
+
+class OLUMIN_PT_XYZ_to_UVW(bpy.types.Panel):
+    bl_label = "XYZ to UVW"
+    bl_space_type = "VIEW_3D"
+    bl_region_type = Region
+    bl_category = "OLumin"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        scn = context.scene
+        layout = self.layout
         box = layout.box()
         box.label(text="Object Material Shader")
-        box.operator("olumin_we.fix_xyz_cameras")
-        box.operator("olumin_we.object_shader_xyz_map")
-        box.prop(scn, "OLuminWE_ColorTextureType")
-        box.prop(scn, "OLuminWE_NewMatPerObj")
+        box.operator("olumin_xtu.fix_xyz_cameras")
+        box.operator("olumin_xtu.object_shader_xyz_map")
+
+        box.prop(scn, "OLuminXTU_AppendMaterial")
+
+        sub1 = box.column()
+        sub1.active = scn.OLuminXTU_AppendMaterial
+        sub1.prop(scn, "OLuminXTU_ColorTextureType")
+        sub1.prop(scn, "OLuminXTU_NewMatPerObj")
 
         # add to existing is only available if not forced to create new material per selected object
-        sub = box.column()
-        sub.active = not scn.OLuminWE_NewMatPerObj
-        sub.prop(scn, "OLuminWE_AddToExisting")
+        sub2 = box.column()
+        sub2.active = (not scn.OLuminXTU_NewMatPerObj) and scn.OLuminXTU_AppendMaterial
+        sub2.prop(scn, "OLuminXTU_AddToExisting")
+
         box.label(text="Modifiers")
-        box.prop(scn, "OLuminWE_ApplyModifiers")
+        box.prop(scn, "OLuminXTU_ApplyModifiers")
         sub = box.column()
-        sub.active = scn.OLuminWE_ApplyModifiers
-        sub.prop(scn, "OLuminWE_CopyHideModifiers")
-        box.prop(scn, "OLuminWE_ReuseCameras")
+        sub.active = scn.OLuminXTU_ApplyModifiers
+        sub.prop(scn, "OLuminXTU_CopyHideModifiers")
+        box.prop(scn, "OLuminXTU_ReuseCameras")
         sub = box.column()
-        sub.active = scn.OLuminWE_ReuseCameras
-        sub.prop(scn, "OLuminWE_ReuseCameraNameXY")
-        sub.prop(scn, "OLuminWE_ReuseCameraNameXZ")
+        sub.active = scn.OLuminXTU_ReuseCameras
+        sub.prop(scn, "OLuminXTU_ReuseCameraNameXY")
+        sub.prop(scn, "OLuminXTU_ReuseCameraNameXZ")
+        box.prop(scn, "OLuminXTU_ReuseUVMaps")
+
+        sub = box.column()
+        sub.active = scn.OLuminXTU_ReuseUVMaps
+        sub.prop(scn, "OLuminXTU_ReuseUVNameXY")
+        sub.prop(scn, "OLuminXTU_ReuseUVNameXZ")
 
 class OLUMIN_MT_menu(bpy.types.Menu):
     bl_idname = 'object.olumin.menu'
@@ -272,8 +295,9 @@ classes = [
     OLuminPM_DropVertex,
     OLUMIN_PT_WorldEnvo,
     OLuminWE_MobileBackground,
-    OLuminWE_ObjectShaderXYZMap,
-    OLuminWE_FixXYZCameras,
+    OLUMIN_PT_XYZ_to_UVW,
+    OLuminXTU_ObjectShaderXYZMap,
+    OLuminXTU_FixXYZCameras,
     OLUMIN_MT_menu,
 ]
 
@@ -420,27 +444,36 @@ def register_props():
     bts.OLuminLE_MathInputValue = bp.FloatProperty(name="Input Value", description="The energy value of the " +
         "selected light(s) will be math'ed with this number, according to Math Function", default=1.0)
 
-    bts.OLuminWE_ColorTextureType =  bp.EnumProperty(name="Color Texture Type", description="Type of node to " +
-        "create for color input to Principled BSDF", items=COLOR_TEXTURE_TYPES, default="ShaderNodeTexNoise")
+    bts.OLuminXTU_AppendMaterial = bp.BoolProperty(name="Append Material", description="If enabled, a simple " +
+        "material is created to demonstrate usage of the XYZ to UVW map, by way of the two UV Maps", default=True)
 
-    bts.OLuminWE_NewMatPerObj = bp.BoolProperty(name="Material per Object", description="Create a new material " +
+    bts.OLuminXTU_ColorTextureType =  bp.EnumProperty(name="Color Texture Type", description="Type of node to " +
+        "create for color input to Principled BSDF", items=COLOR_TEXTURE_TYPES, default="ShaderNodeTexNoise")
+    bts.OLuminXTU_NewMatPerObj = bp.BoolProperty(name="Material per Object", description="Create a new material " +
         "shader for each object, instead of grouping object shaders, i.e. each object's material shader is " +
         "independent of all other objects' material shader(s)", default=False)
-    bts.OLuminWE_AddToExisting = bp.BoolProperty(name="Add to Existing Material", description="If enabled, try to " +
+    bts.OLuminXTU_AddToExisting = bp.BoolProperty(name="Add to Existing Material", description="If enabled, try to " +
         "add shader nodes to object's currently active material. If not enabled, create a new material shader on " +
         "the object, appended after current material(s) on the object", default=False)
-    bts.OLuminWE_ApplyModifiers = bp.BoolProperty(name="Apply Modifiers", description="Apply 'UV Project' " +
+    bts.OLuminXTU_ApplyModifiers = bp.BoolProperty(name="Apply Modifiers", description="Apply 'UV Project' " +
         "modifiers to the UV Maps. I.e. Doing this will save a copy of the XYZ coordinates of each vertex into " +
         "the two UV Maps (XY and XZ maps)", default=True)
-    bts.OLuminWE_CopyHideModifiers = bp.BoolProperty(name="Copy and Hide Modifiers", description="Enable this to " +
+    bts.OLuminXTU_CopyHideModifiers = bp.BoolProperty(name="Copy and Hide Modifiers", description="Enable this to " +
         "keep a copy of the UV Project modifiers on the selected object(s) after applying them once", default=True)
 
-    bts.OLuminWE_ReuseCameras = bp.BoolProperty(name="Reuse Cameras", description="Try to re-use existing cameras " +
-        "(found by name) for projecting XYZ to UVW", default=True)
-    bts.OLuminWE_ReuseCameraNameXY = bp.StringProperty(name="XY Cam name", description="Name of camera to use for " +
-        "XY projection, as part of the XYZ to UVW projection process", default=WE_CAMERA_NAME_XY)
-    bts.OLuminWE_ReuseCameraNameXZ = bp.StringProperty(name="XZ Cam name", description="Name of camera to use for " +
-        "XZ projection, as part of the XYZ to UVW projection process", default=WE_CAMERA_NAME_XZED)
+    bts.OLuminXTU_ReuseCameras = bp.BoolProperty(name="Re-use Cameras", description="Try to re-use existing cameras " +
+        "(found by name) for projecting XYZ to UVW onto selected object(s)", default=True)
+    bts.OLuminXTU_ReuseCameraNameXY = bp.StringProperty(name="'XY' Cam name", description="Name of camera to use for " +
+        "'XY' projection, as part of the XYZ to UVW projection process", default=XTU_CAMERA_NAME_XY)
+    bts.OLuminXTU_ReuseCameraNameXZ = bp.StringProperty(name="'XZ' Cam name", description="Name of camera to use for " +
+        "'XZ' projection, as part of the XYZ to UVW projection process", default=XTU_CAMERA_NAME_XZED)
+
+    bts.OLuminXTU_ReuseUVMaps = bp.BoolProperty(name="Re-use UV Maps", description="Try to re-use existing UV Maps" +
+        "(found by name) for projecting XYZ to UVW onto selected object(s)", default=False)
+    bts.OLuminXTU_ReuseUVNameXY = bp.StringProperty(name="'XY' UV Map name", description="Name of UV Map to re-use " +
+        "for 'XY' projection, as part of the XYZ to UVW projection process", default=XTU_XY_MAP_NAME)
+    bts.OLuminXTU_ReuseUVNameXZ = bp.StringProperty(name="'XZ' UV Map name", description="Name of UV Map to re-use " +
+        "for 'XZ' projection, as part of the XYZ to UVW projection process", default=XTU_XZED_MAP_NAME)
 
 if __name__ == "__main__":
     register()
