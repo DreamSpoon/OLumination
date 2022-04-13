@@ -45,27 +45,27 @@ def get_mesh_post_modifiers(context, obj):
     object_eval = obj.evaluated_get(depsgraph)
     return bpy.data.meshes.new_from_object(object_eval)
 
-def create_object_cube(cube_name, cube_size, cube_loc):
+def create_object_cube(context, cube_name, cube_size, cube_loc):
     bpy.ops.mesh.primitive_cube_add(size=cube_size*2, location=cube_loc)
-    new_obj = bpy.context.active_object
+    new_obj = context.active_object
     new_obj.name = cube_name
     return new_obj
 
-def create_object_plane(plane_name, plane_size, plane_loc, plane_calc_uvs):
+def create_object_plane(context, plane_name, plane_size, plane_loc, plane_calc_uvs):
     bpy.ops.mesh.primitive_plane_add(size=plane_size*2, calc_uvs=plane_calc_uvs, location=plane_loc)
-    new_obj = bpy.context.active_object
+    new_obj = context.active_object
     new_obj.name = plane_name
     return new_obj
 
-def create_object_icosphere(sphere_name, num_sphere_subdiv, sphere_radius, sphere_loc):
+def create_object_icosphere(context, sphere_name, num_sphere_subdiv, sphere_radius, sphere_loc):
     bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=num_sphere_subdiv, radius=sphere_radius, location=sphere_loc)
-    new_obj = bpy.context.active_object
+    new_obj = context.active_object
     new_obj.name = sphere_name
     return new_obj
 
-def create_object_light(light_name, light_type, light_radius, light_loc):
+def create_object_light(context, light_name, light_type, light_radius, light_loc):
     bpy.ops.object.light_add(type=light_type, radius=light_radius, location=light_loc)
-    new_obj = bpy.context.active_object
+    new_obj = context.active_object
     new_obj.name = light_name
     return new_obj
 
@@ -109,7 +109,7 @@ def deselect_objects(ob_list):
 def scene_link_object(context, ob):
     context.scene.collection.objects.link(ob)
 
-def get_all_objects_list():
+def get_all_objects_list(context):
     a_list = []
     for c in range(len(bpy.data.collections)):
         for i in range(len(bpy.data.collections[c].all_objects)):

@@ -39,27 +39,27 @@ def matrix_vector_mult(m, v):
 def get_mesh_post_modifiers(context, obj):
     return obj.to_mesh(context.scene, True, 'PREVIEW')
 
-def create_object_cube(cube_name, cube_size, cube_loc):
+def create_object_cube(context, cube_name, cube_size, cube_loc):
     bpy.ops.mesh.primitive_cube_add(radius=cube_size, location=cube_loc)
-    new_obj = bpy.context.active_object
+    new_obj = context.active_object
     new_obj.name = cube_name
     return new_obj
 
-def create_object_plane(plane_name, plane_size, plane_loc, plane_calc_uvs):
+def create_object_plane(context, plane_name, plane_size, plane_loc, plane_calc_uvs):
     bpy.ops.mesh.primitive_plane_add(radius=plane_size, calc_uvs=plane_calc_uvs, location=plane_loc)
-    new_obj = bpy.context.active_object
+    new_obj = context.active_object
     new_obj.name = plane_name
     return new_obj
 
-def create_object_icosphere(sphere_name, num_sphere_subdiv, sphere_radius, sphere_loc):
+def create_object_icosphere(context, sphere_name, num_sphere_subdiv, sphere_radius, sphere_loc):
     bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=num_sphere_subdiv, size=sphere_radius, location=sphere_loc)
-    new_obj = bpy.context.active_object
+    new_obj = context.active_object
     new_obj.name = sphere_name
     return new_obj
 
-def create_object_light(light_name, light_type, light_radius, light_loc):
+def create_object_light(context, light_name, light_type, light_radius, light_loc):
     bpy.ops.object.lamp_add(type=light_type, radius=light_radius, location=light_loc)
-    new_obj = bpy.context.active_object
+    new_obj = context.active_object
     new_obj.name = light_name
     return new_obj
 
@@ -105,10 +105,10 @@ def scene_link_object(context, ob):
 def set_object_hide(obj, hide_val):
     obj.hide = hide_val
 
-def get_all_objects_list():
+def get_all_objects_list(context):
     a_list = []
-    for i in range(len(bpy.context.scene.objects)):
-        a_list.append(bpy.context.scene.objects[i])
+    for i in range(len(context.scene.objects)):
+        a_list.append(context.scene.objects[i])
     return a_list
 
 def get_lights_from_selected(context):

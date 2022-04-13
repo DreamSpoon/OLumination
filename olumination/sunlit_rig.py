@@ -504,21 +504,44 @@ def create_sunlit_armature(context, num_sun_lights, num_occluding_disks):
     return armature, sphere_bone_name, sun_bone_name_tuples, odisk_bone_name_tuples
 
 def create_widget_cube(context):
-    widget_cube = create_object_cube(SUNLIT_WGT_CUBE_NAME, 0.1, (0, 0, 0))
+    widget_cube = create_object_cube(context, SUNLIT_WGT_CUBE_NAME, 0.1, (0, 0, 0))
     set_object_display_type(widget_cube, "WIRE")
     set_object_hide_view(widget_cube, True)
     set_object_hide_render(widget_cube, True)
     return widget_cube
 
+import bpy, bmesh
 def create_widget_triangle(context):
-    widget_tri = object_create_mesh(context, SUNLIT_WGT_TRI_NAME, SUNLIT_WGT_TRI_VERTS)
+    old_3dview_mode = context.object.mode
+    widget_tri = create_object_plane(context, SUNLIT_WGT_TRI_NAME, 1, (0, 0, 0), False)
+    bpy.ops.object.mode_set(mode="EDIT")
+    mesh_data = widget_tri.data
+    bm = bmesh.from_edit_mesh(mesh_data)
+    # delete old geometry (context=1 because VERTS is first in enum
+    # ['VERTS', 'EDGES', 'FACES_ONLY', 'EDGES_FACES', 'FACES', 'FACES_KEEP_BOUNDARY', 'TAGGED_ONLY']
+    bmesh.ops.delete(bm, geom=bm.verts, context=1)
+    # add triangle vertexes
+    for v_pos in SUNLIT_WGT_TRI_VERTS:
+        bm.verts.new(v_pos)
+    # ensure that vertexes can be indexed, e.g. bm.verts[1]
+    bm.verts.ensure_lookup_table()
+    # add edges
+    bm.edges.new([bm.verts[0], bm.verts[1]])
+    bm.edges.new([bm.verts[1], bm.verts[2]])
+    bm.edges.new([bm.verts[2], bm.verts[0]])
+    # add triangle face
+    bm.faces.new([bm.verts[0], bm.verts[1], bm.verts[2]])
+    # update mesh object, and free bmesh to prevent further access to bm
+    bmesh.update_edit_mesh(mesh=mesh_data, destructive=True)
+    bm.free()
+    bpy.ops.object.mode_set(mode=old_3dview_mode)
     set_object_display_type(widget_tri, "WIRE")
     set_object_hide_view(widget_tri, True)
     set_object_hide_render(widget_tri, True)
     return widget_tri
 
 def create_widget_plane(context):
-    widget_plane = create_object_plane(SUNLIT_WGT_PLANE_NAME, 0.33, (0, 0, 0), False)
+    widget_plane = create_object_plane(context, SUNLIT_WGT_PLANE_NAME, 0.33, (0, 0, 0), False)
     widget_plane.rotation_euler = (math.radians(90), 0, 0)
     bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
     set_object_display_type(widget_plane, "WIRE")
@@ -561,7 +584,7 @@ def create_sunlit_rig(context, hemisphere_only, num_suns, num_sphere_subdiv, num
         num_suns, num_occluding_disks)
 
     # create base sphere, with which sun blinds planes will intersect
-    base_sphere = create_object_icosphere(obj_prepend_name_num(SUNLIT_BASE_SPHERE_PREPEND, 0), num_sphere_subdiv,
+    base_sphere = create_object_icosphere(context, obj_prepend_name_num(SUNLIT_BASE_SPHERE_PREPEND, 0), num_sphere_subdiv,
         SUNLIT_BASE_SPHERE_RADIUS, SUNLIT_BASE_SPHERE_OFFSET)
     base_sphere.parent = sl_armature
     base_sphere.parent_type = "BONE"
@@ -572,7 +595,7 @@ def create_sunlit_rig(context, hemisphere_only, num_suns, num_sphere_subdiv, num
         SUNLIT_SENSOR_PLANE_RADIUS, SUNLIT_SENSOR_OFFSET, False)
     for plane in sensor_planes:
         create_sensor_material_on_obj(plane, sun_sensor_image_width, sun_sensor_image_height)
-    create_sun_lights(sl_armature, sun_bone_name_tuples, SUNLIT_SUN_PREPEND,
+    create_sun_lights(context, sl_armature, sun_bone_name_tuples, SUNLIT_SUN_PREPEND,
         SUNLIT_SUN_OFFSET, default_sun_energy, default_sun_angle)
 
     # create sun_blinds_list
@@ -673,7 +696,7 @@ def create_sunlit_planes(context, sl_arm, bone_tuples, prepend_str, p_radius, lo
         # calculate UVs for the plane object if it is not a "blinds" object
         calc_uvs = not is_blinds
         # create the plane with the given options
-        new_obj = create_object_plane(obj_prepend_name_num(prepend_str, c), p_radius, loc, calc_uvs)
+        new_obj = create_object_plane(context, obj_prepend_name_num(prepend_str, c), p_radius, loc, calc_uvs)
         new_obj.rotation_euler = (math.radians(270), 0, 0)
         new_obj.parent = sl_arm
         new_obj.parent_type = "BONE"
@@ -691,7 +714,7 @@ def create_sunlit_diff_cubes(context, sl_arm, sun_bone_name_tuples, prepend_str)
 
     c = 0
     for s_pivot_b, s_targ_b, sensor_b, diff_cube_b, lit_adjust_b in sun_bone_name_tuples:
-        new_obj = create_object_cube(obj_prepend_name_num(prepend_str, c), 1, SUNLIT_DIFF_CUBE_OFFSET)
+        new_obj = create_object_cube(context, obj_prepend_name_num(prepend_str, c), 1, SUNLIT_DIFF_CUBE_OFFSET)
         context.active_object.parent = sl_arm
         context.active_object.parent_type = "BONE"
         context.active_object.parent_bone = diff_cube_b
@@ -701,12 +724,12 @@ def create_sunlit_diff_cubes(context, sl_arm, sun_bone_name_tuples, prepend_str)
 
     return diff_cubes
 
-def create_sun_lights(sl_arm, sun_bone_name_tuples, prepend_str, loc, sun_energy, sun_angle):
+def create_sun_lights(context, sl_arm, sun_bone_name_tuples, prepend_str, loc, sun_energy, sun_angle):
     lights = []
 
     c = 0
     for s_pivot_b, s_targ_b, sensor_b, diff_cube_b, lit_adjust_b in sun_bone_name_tuples:
-        sun_light = create_object_light(obj_prepend_name_num(prepend_str, c), "SUN", 1, loc)
+        sun_light = create_object_light(context, obj_prepend_name_num(prepend_str, c), "SUN", 1, loc)
         sun_light.rotation_euler = (math.radians(270), 0, 0)
         sun_light.data.energy = sun_energy
         #sun_light.data.angle = sun_angle
@@ -896,7 +919,7 @@ def create_occluding_disks(context, sl_arm, odisk_bone_name_tuples, odisk_includ
 
         if odisk_include_sun:
             # create Sun to attach to occluding disk
-            odisk_sun = create_object_light(obj_prepend_name_num(SUNLIT_ODISK_SUN_PREPEND, c), "SUN", 1, SUNLIT_ODISK_OFFSET)
+            odisk_sun = create_object_light(context, obj_prepend_name_num(SUNLIT_ODISK_SUN_PREPEND, c), "SUN", 1, SUNLIT_ODISK_OFFSET)
             odisk_sun.rotation_euler = (math.radians(270), 0, 0)
             odisk_sun.data.energy = odisk_sun_energy
             #odisk_sun.data.anle = odisk_sun_angle
@@ -1251,7 +1274,7 @@ class OLuminSL_FixRigVisibility(bpy.types.Operator):
 
     def execute(self, context):
         scn = context.scene
-        all_obj_list = get_all_objects_list()
+        all_obj_list = get_all_objects_list(context)
         for obj in all_obj_list:
             # hide any Sunlig Rig widget objects that are found
             if is_sunlit_rig_widget(obj):
@@ -1405,7 +1428,7 @@ class OLuminSL_SelectVisibleRigs(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        all_obj_list = get_all_objects_list()
+        all_obj_list = get_all_objects_list(context)
         for obj in all_obj_list:
             if not get_object_hide_view(obj) and is_sunlit_armature(obj):
                 select_object(obj)
@@ -1418,7 +1441,7 @@ class OLuminSL_SelectAllRigs(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        all_obj_list = get_all_objects_list()
+        all_obj_list = get_all_objects_list(context)
         for obj in all_obj_list:
             if is_sunlit_armature(obj):
                 select_object(obj)

@@ -44,10 +44,11 @@ from .sunlit_rig import (OLuminSL_CreateRig, OLuminSL_FixRigVisibility, OLuminSL
     OLuminSL_SetSelectSunAngle, OLuminSL_SetRigSunAngle, OLuminSL_SelectVisibleRigs, OLuminSL_SelectAllRigs,
     OLuminSL_SelectRigRegularSensors, OLuminSL_SelectRigODiskSensors, OLuminSL_SelectRigRegularLights,
     OLuminSL_SelectRigODiskLights, OLuminSL_PointRegularFromView, OLuminSL_PointODiskFromView, OLuminSL_PointCamAtODisk)
-from .proxy_metric import OLuminPM_CreateSimpleHumanProxy, OLuminPM_DropVertex
+from .proxy_metric import (OLuminPM_CreateSimpleHumanProxy, OLuminPM_DropVertex)
 from .light_color import OLuminLC_ColorMath
 from .light_energy import OLuminLE_MathLightEnergy
-from .world_envo import OLuminWE_MobileBackground, OLuminWE_ObjectShaderXYZ_Map
+from .world_envo import (OLuminWE_MobileBackground, OLuminWE_ObjectShaderXYZMap, OLuminWE_FixXYZCameras,
+    WE_CAMERA_NAME_XY, WE_CAMERA_NAME_XZED)
 
 AngularDiameterEnabled = False
 if bpy.app.version < (2,80,0):
@@ -210,6 +211,7 @@ class OLUMIN_PT_WorldEnvo(bpy.types.Panel):
         box.operator("olumin_we.mobile_background")
         box = layout.box()
         box.label(text="Object Material Shader")
+        box.operator("olumin_we.fix_xyz_cameras")
         box.operator("olumin_we.object_shader_xyz_map")
         box.prop(scn, "OLuminWE_ColorTextureType")
         box.prop(scn, "OLuminWE_NewMatPerObj")
@@ -224,6 +226,7 @@ class OLUMIN_PT_WorldEnvo(bpy.types.Panel):
         sub.active = scn.OLuminWE_ApplyModifiers
         sub.prop(scn, "OLuminWE_CopyHideModifiers")
         box.prop(scn, "OLuminWE_ReuseCameras")
+        sub = box.column()
         sub.active = scn.OLuminWE_ReuseCameras
         sub.prop(scn, "OLuminWE_ReuseCameraNameXY")
         sub.prop(scn, "OLuminWE_ReuseCameraNameXZ")
@@ -269,7 +272,8 @@ classes = [
     OLuminPM_DropVertex,
     OLUMIN_PT_WorldEnvo,
     OLuminWE_MobileBackground,
-    OLuminWE_ObjectShaderXYZ_Map,
+    OLuminWE_ObjectShaderXYZMap,
+    OLuminWE_FixXYZCameras,
     OLUMIN_MT_menu,
 ]
 
@@ -434,9 +438,9 @@ def register_props():
     bts.OLuminWE_ReuseCameras = bp.BoolProperty(name="Reuse Cameras", description="Try to re-use existing cameras " +
         "(found by name) for projecting XYZ to UVW", default=True)
     bts.OLuminWE_ReuseCameraNameXY = bp.StringProperty(name="XY Cam name", description="Name of camera to use for " +
-        "XY projection, as part of the XYZ to UVW projection process")
+        "XY projection, as part of the XYZ to UVW projection process", default=WE_CAMERA_NAME_XY)
     bts.OLuminWE_ReuseCameraNameXZ = bp.StringProperty(name="XZ Cam name", description="Name of camera to use for " +
-        "XZ projection, as part of the XYZ to UVW projection process")
+        "XZ projection, as part of the XYZ to UVW projection process", default=WE_CAMERA_NAME_XZED)
 
 if __name__ == "__main__":
     register()

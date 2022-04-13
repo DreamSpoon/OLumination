@@ -26,7 +26,9 @@ else:
     from .imp_v28 import *
 
 WE_XY_MAP_NAME = "xy_to_uv_map"
-WE_XZED_MAP_NAME = "xzed_to_uv_map"
+WE_XZED_MAP_NAME = "xz_to_uv_map"
+WE_CAMERA_NAME_XY = "Camera.UVxy"
+WE_CAMERA_NAME_XZED = "Camera.UVxz"
 
 class OLuminWE_MobileBackground(bpy.types.Operator):
     """Enable movement of the world background environment texture (e.g. HDRI texture), by connecting it to camera location.""" \
@@ -135,26 +137,7 @@ def create_mobile_background(context):
         v.targets[0].data_path = d_path
         fc.driver.expression = v.name
 
-
-
-
-
-
-#
-    bts.OLuminWE_ReuseCameras = bp.BoolProperty(name="Reuse Cameras", description="Try to re-use existing cameras " +
-        "(found by name) for projecting XYZ to UVW", default=True)
-    bts.OLuminWE_ReuseCameraNameXY = bp.StringProperty(name="XY Cam name", description="Name of camera to use for " +
-        "XY projection, as part of the XYZ to UVW projection process")
-    bts.OLuminWE_ReuseCameraNameXZ = bp.StringProperty(name="XZ Cam name", description="Name of camera to use for " +
-        "XZ projection, as part of the XYZ to UVW projection process")
-#
-
-
-
-
-
-
-class OLuminWE_ObjectShaderXYZ_Map(bpy.types.Operator):
+class OLuminWE_ObjectShaderXYZMap(bpy.types.Operator):
     """With selected objects, append a new shader to capture XYZ vertex coordinates and store them in two UV maps """ \
     """for resultant XYZ -> UVW mapping. E.g. Use when applying noise texture node to a mesh that will be deformed by """ \
     """shapekeys/simulation"""
@@ -168,10 +151,10 @@ class OLuminWE_ObjectShaderXYZ_Map(bpy.types.Operator):
         existing_cam_xy = None
         existing_cam_xzed = None
         if scn.OLuminWE_ReuseCameraNameXY != "":
-            test_cam = context.objects.get(scn.OLuminWE_ReuseCameraNameXY)
+            test_cam = bpy.data.objects.get(scn.OLuminWE_ReuseCameraNameXY)
             existing_cam_xy = test_cam
         if scn.OLuminWE_ReuseCameraNameXZ != "":
-            test_cam = context.objects.get(scn.OLuminWE_ReuseCameraNameXZ)
+            test_cam = bpy.data.objects.get(scn.OLuminWE_ReuseCameraNameXZ)
             existing_cam_xzed = test_cam
         original_cam_xy, original_cam_xzed = existing_cam_xy, existing_cam_xzed
 
@@ -261,7 +244,6 @@ class OLuminWE_ObjectShaderXYZ_Map(bpy.types.Operator):
 def delete_widget_cam(wgt_cam):
     bpy.ops.object.select_all(action='DESELECT')
     select_object(wgt_cam)
-    select_object(cam_xzed)
     bpy.ops.object.delete()
 
 # create two UV maps on object 'obj', to be used for XYZ to UVW mapping via two UV Project modifiers on object 'obj'
@@ -358,6 +340,7 @@ def add_uv_project_camera(context, proj_type):
     if proj_type == "XY":
         bpy.ops.object.camera_add(location=(0, 0, 0), rotation=(0, 0, 0))
         cam_xy = context.active_object
+        cam_xy.name = WE_CAMERA_NAME_XY
         cam_xy.data.type = "ORTHO"
         cam_xy.data.ortho_scale = 1.0
         # Offset by 0.5 in all dimensions, this seems to relate to:
@@ -368,6 +351,7 @@ def add_uv_project_camera(context, proj_type):
     elif proj_type == "XZ":
         bpy.ops.object.camera_add(location=(0, 0, 0), rotation=(math.radians(90), 0, 0))
         cam_xzed = context.active_object
+        cam_xzed.name = WE_CAMERA_NAME_XZED
         cam_xzed.data.type = "ORTHO"
         cam_xzed.data.ortho_scale = 1.0
         cam_xzed.location = (0.5, 0.5, 0.5)
@@ -401,9 +385,8 @@ def apply_proj_modifiers(context, obj, copy_hide_modifiers, proj_mod_xy, proj_mo
     cam_xy, cam_xzed):
     set_active_object(context, obj)
 
-    # apply last modifier first
-    bpy.ops.object.modifier_apply(modifier=proj_mod_xzed.name)
     bpy.ops.object.modifier_apply(modifier=proj_mod_xy.name)
+    bpy.ops.object.modifier_apply(modifier=proj_mod_xzed.name)
 
     if copy_hide_modifiers:
         # re-create them, instead of copying - haha!
@@ -413,3 +396,18 @@ def apply_proj_modifiers(context, obj, copy_hide_modifiers, proj_mod_xy, proj_mo
         b_mod_xy.show_render = False
         b_mod_xzed.show_viewport = False
         b_mod_xzed.show_render = False
+
+class OLuminWE_FixXYZCameras(bpy.types.Operator):
+    """Fix the visibility of XYZ to UVW cameras"""
+    bl_idname = "olumin_we.fix_xyz_cameras"
+    bl_label = "Fix XYZ Cameras"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        all_obj_list = get_all_objects_list(context)
+        for obj in all_obj_list:
+            # hide any camera objects with name matching XYZ to UVW standard camera name
+            # TODO instead of using sloppy 'startswith' string check, check for ends with .001 or .002, etc.
+            if obj.type == "CAMERA" and (obj.name.startswith(WE_CAMERA_NAME_XY) or obj.name.startswith(WE_CAMERA_NAME_XZED)):
+                set_object_hide_view(obj, True)
+        return {'FINISHED'}
