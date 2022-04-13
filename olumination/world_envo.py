@@ -25,8 +25,8 @@ if bpy.app.version < (2,80,0):
 else:
     from .imp_v28 import *
 
-WE_XY_MAP_NAME = "xy_to_uv_map"
-WE_XZED_MAP_NAME = "xz_to_uv_map"
+WE_XY_MAP_NAME = "xy_to_uv"
+WE_XZED_MAP_NAME = "xz_to_uv"
 WE_CAMERA_NAME_XY = "Camera.UVxy"
 WE_CAMERA_NAME_XZED = "Camera.UVxz"
 
@@ -170,6 +170,8 @@ class OLuminWE_ObjectShaderXYZMap(bpy.types.Operator):
             if uv_map_xy is None or uv_map_xzed is None:
                 print("Unable to create UV Maps on object: " + obj.name)
                 continue
+            # prevent reference problems/errors when uv_map_xy and uv_map_xzed are used later,
+            # the UV map names are all that is needed
             saved_uv_map_xy_name = uv_map_xy.name
             saved_uv_map_xzed_name = uv_map_xzed.name
 
@@ -185,10 +187,10 @@ class OLuminWE_ObjectShaderXYZMap(bpy.types.Operator):
                 if scn.OLuminWE_ReuseCameras:
                     existing_cam_xzed = cam_xzed
             # --- object modifier code ---
-            proj_mod_xy, proj_mod_xzed = add_object_uv_project_mods(obj, uv_map_xy, uv_map_xzed, cam_xy, cam_xzed)
+            proj_mod_xy, proj_mod_xzed = add_object_uv_project_mods(obj, saved_uv_map_xy_name, saved_uv_map_xzed_name, cam_xy, cam_xzed)
             if scn.OLuminWE_ApplyModifiers:
                 apply_proj_modifiers(context, obj, scn.OLuminWE_CopyHideModifiers, proj_mod_xy, proj_mod_xzed, \
-                    uv_map_xy, uv_map_xzed, cam_xy, cam_xzed)
+                    saved_uv_map_xy_name, saved_uv_map_xzed_name, cam_xy, cam_xzed)
                 # delete cameras if modifiers were not 'copied', and were applied only
                 if not scn.OLuminWE_CopyHideModifiers:
                     # if a pre-existing camera wasn't used, then delete the widget cam
@@ -360,10 +362,10 @@ def add_uv_project_camera(context, proj_type):
 
 # project the XYZ coordinates to UVW coordinates
 # two UV maps give 4 coordinates (1 is wasted!), and use 3 coordinates to store (X, Y, Z) as (U1, V1, U2)
-def add_object_uv_project_mods(obj, uv_map_xy, uv_map_xzed, cam_xy, cam_xzed):
+def add_object_uv_project_mods(obj, uv_map_xy_name, uv_map_xzed_name, cam_xy, cam_xzed):
     # (U1, V1)
     b_mod_xy = obj.modifiers.new("UVProject.XY", "UV_PROJECT")
-    b_mod_xy.uv_layer = uv_map_xy.name
+    b_mod_xy.uv_layer = uv_map_xy_name
     b_mod_xy.aspect_x = 1.0
     b_mod_xy.aspect_y = 1.0
     b_mod_xy.scale_x = 1.0
@@ -372,7 +374,7 @@ def add_object_uv_project_mods(obj, uv_map_xy, uv_map_xzed, cam_xy, cam_xzed):
 
     # (U2, V2)
     b_mod_xzed = obj.modifiers.new("UVProject.XZ", "UV_PROJECT")
-    b_mod_xzed.uv_layer = uv_map_xzed.name
+    b_mod_xzed.uv_layer = uv_map_xzed_name
     b_mod_xzed.aspect_x = 1.0
     b_mod_xzed.aspect_y = 1.0
     b_mod_xzed.scale_x = 1.0
@@ -381,7 +383,7 @@ def add_object_uv_project_mods(obj, uv_map_xy, uv_map_xzed, cam_xy, cam_xzed):
 
     return b_mod_xy, b_mod_xzed
 
-def apply_proj_modifiers(context, obj, copy_hide_modifiers, proj_mod_xy, proj_mod_xzed, uv_map_xy, uv_map_xzed, \
+def apply_proj_modifiers(context, obj, copy_hide_modifiers, proj_mod_xy, proj_mod_xzed, uv_map_xy_name, uv_map_xzed_name, \
     cam_xy, cam_xzed):
     set_active_object(context, obj)
 
@@ -390,7 +392,7 @@ def apply_proj_modifiers(context, obj, copy_hide_modifiers, proj_mod_xy, proj_mo
 
     if copy_hide_modifiers:
         # re-create them, instead of copying - haha!
-        b_mod_xy, b_mod_xzed = add_object_uv_project_mods(obj, uv_map_xy, uv_map_xzed, cam_xy, cam_xzed)
+        b_mod_xy, b_mod_xzed = add_object_uv_project_mods(obj, uv_map_xy_name, uv_map_xzed_name, cam_xy, cam_xzed)
         # hide them
         b_mod_xy.show_viewport = False
         b_mod_xy.show_render = False
