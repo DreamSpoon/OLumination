@@ -510,16 +510,13 @@ def create_widget_cube(context):
     set_object_hide_render(widget_cube, True)
     return widget_cube
 
-import bpy, bmesh
 def create_widget_triangle(context):
     old_3dview_mode = context.object.mode
     widget_tri = create_object_plane(context, SUNLIT_WGT_TRI_NAME, 1, (0, 0, 0), False)
     bpy.ops.object.mode_set(mode="EDIT")
     mesh_data = widget_tri.data
     bm = bmesh.from_edit_mesh(mesh_data)
-    # delete old geometry (context=1 because VERTS is first in enum
-    # ['VERTS', 'EDGES', 'FACES_ONLY', 'EDGES_FACES', 'FACES', 'FACES_KEEP_BOUNDARY', 'TAGGED_ONLY']
-    bmesh.ops.delete(bm, geom=bm.verts, context=1)
+    bmesh_delete_verts(bm, bm.verts)
     # add triangle vertexes
     for v_pos in SUNLIT_WGT_TRI_VERTS:
         bm.verts.new(v_pos)

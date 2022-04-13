@@ -17,6 +17,7 @@
 # ##### END GPL LICENSE BLOCK #####
 
 import bpy
+import bmesh
 
 COLOR_TEXTURE_TYPES = [
     ("ShaderNodeTexBrick", "Brick Texture", "", 1),
@@ -155,3 +156,6 @@ def create_object_uv_map(obj, xy_map_name):
 
 def get_object_uv_map(obj, base_map_name):
     return obj.data.uv_layers.get(base_map_name)
+
+def bmesh_delete_verts(bm, bm_verts):
+    bmesh.ops.delete(bm, geom=bm_verts, context="VERTS")
