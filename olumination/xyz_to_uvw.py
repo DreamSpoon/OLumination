@@ -105,7 +105,7 @@ class OLuminXTU_ObjectShaderXYZMap(bpy.types.Operator):
             # --- object modifier code ---
             proj_mod_xy, proj_mod_xzed = add_object_uv_project_mods(obj, saved_uv_map_xy_name, saved_uv_map_xzed_name, cam_xy, cam_xzed)
             if scn.OLuminXTU_ApplyModifiers:
-                apply_proj_modifiers(context, obj, scn.OLuminXTU_CopyHideModifiers, proj_mod_xy, proj_mod_xzed, \
+                apply_proj_modifiers(context, obj, scn.OLuminXTU_CopyHideModifiers, proj_mod_xy, proj_mod_xzed,
                     saved_uv_map_xy_name, saved_uv_map_xzed_name, cam_xy, cam_xzed)
                 # delete cameras if modifiers were not 'copied', and were applied only
                 if not scn.OLuminXTU_CopyHideModifiers:
@@ -131,16 +131,17 @@ class OLuminXTU_ObjectShaderXYZMap(bpy.types.Operator):
             #  --- shader material code ---
             if scn.OLuminXTU_NewMatPerObj:
                 # create a completely new material shader and append material to each object
-                mat_shader_per_obj = create_xyz_to_uvw_mat_shader(None, saved_uv_map_xy_name, saved_uv_map_xzed_name, \
+                mat_shader_per_obj = create_xyz_to_uvw_mat_shader(None, saved_uv_map_xy_name, saved_uv_map_xzed_name,
                     scn.OLuminXTU_ColorTextureType)
                 obj.data.materials.append(mat_shader_per_obj)
             else:
                 # add to existing material shader if it exists, but not if it has already been added to
                 # (in case multiple mesh objects with the same shader are selected when using this function)
-                if scn.OLuminXTU_AddToExisting and obj.active_material != None and obj.active_material not in already_added_to_shaders:
-                    create_xyz_to_uvw_mat_shader(obj.active_material, saved_uv_map_xy_name, saved_uv_map_xzed_name, \
-                        scn.OLuminXTU_ColorTextureType)
-                    already_added_to_shaders.append(obj.active_material)
+                if scn.OLuminXTU_AddToExisting and obj.active_material != None:
+                    if obj.active_material not in already_added_to_shaders:
+                        create_xyz_to_uvw_mat_shader(obj.active_material, saved_uv_map_xy_name,
+                            saved_uv_map_xzed_name, scn.OLuminXTU_ColorTextureType)
+                        already_added_to_shaders.append(obj.active_material)
                 # otherwise, try to get previous material shader with UV map names matching this object's UV map names
                 # (the XY and XZ 'UV Maps')
                 else:
@@ -155,7 +156,7 @@ class OLuminXTU_ObjectShaderXYZMap(bpy.types.Operator):
                     obj_mat_shader = xy_name_dictionary.get(saved_uv_map_xzed_name)
                     if obj_mat_shader is None:
                         # create the mat because it wasn't found in the name combinations nested-dictionary
-                        obj_mat_shader = create_xyz_to_uvw_mat_shader(None, saved_uv_map_xy_name, saved_uv_map_xzed_name, \
+                        obj_mat_shader = create_xyz_to_uvw_mat_shader(None, saved_uv_map_xy_name, saved_uv_map_xzed_name,
                             scn.OLuminXTU_ColorTextureType)
                         # add the material to the nested-dictionary, for use later if needed
                         # this will reduce the amount of redundant material shaders created
@@ -292,7 +293,7 @@ def add_object_uv_project_mods(obj, uv_map_xy_name, uv_map_xzed_name, cam_xy, ca
 
     return b_mod_xy, b_mod_xzed
 
-def apply_proj_modifiers(context, obj, copy_hide_modifiers, proj_mod_xy, proj_mod_xzed, uv_map_xy_name, uv_map_xzed_name, \
+def apply_proj_modifiers(context, obj, copy_hide_modifiers, proj_mod_xy, proj_mod_xzed, uv_map_xy_name, uv_map_xzed_name,
     cam_xy, cam_xzed):
     set_active_object(context, obj)
 
