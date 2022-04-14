@@ -30,7 +30,7 @@ bl_info = {
     "name": "OLumination",
     "description": "Tools for use with EEVEE and Cycles lighting, including HDRI environment lighting in EEVEE.",
     "author": "Dave",
-    "version": (0, 1, 0),
+    "version": (0, 5, 0),
     "blender": (2, 80, 0),
     "location": "View 3D -> Tools -> OLumin",
     "category": "Lighting",
@@ -239,7 +239,9 @@ class OLUMIN_PT_XYZ_to_UVW(bpy.types.Panel):
         sub2 = box.column()
         sub2.active = (not scn.OLuminXTU_NewMatPerObj) and scn.OLuminXTU_AppendMaterial
         sub2.prop(scn, "OLuminXTU_AddToExisting")
-        sub2.prop(scn, "OLuminXTU_UnderLowestNode")
+        sub3 = box.column()
+        sub3.active = (not scn.OLuminXTU_NewMatPerObj) and scn.OLuminXTU_AppendMaterial and scn.OLuminXTU_AddToExisting
+        sub3.prop(scn, "OLuminXTU_UnderLowestNode")
 
         box.label(text="Modifiers")
         box.prop(scn, "OLuminXTU_ApplyModifiers")

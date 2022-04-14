@@ -51,23 +51,20 @@ Note: This function requires the Rigify addon to be enabled. Rigify is included 
   - Go to the Addons section, and search for Rigify
   - Enable Rigify addon
 
-### World Envo
-World Environment, in two parts:
-  - Mobile Background
-  - Object XYZ to UVW
-
-#### Mobile Background
+### World Envo - Mobile Background
 Add some "depth" to flat HDRI environments with Mobile Background. Select the Camera that will control the background, and press the World Envo -> Mobile Background button.
 This will add a world background material shader to simulate movement of camera within HDRI. Adjust the Scale part of the Vector mapping, in the world material shader, to set the distance to the "floor" plane. This is a bit of a difficult process and usually requires synchronizing with geometry in the scene. I.e. It's a good idea to set up the geometry in the scene with the HDRI before adjusting the "floor plane".
 
 Notes:
   - the Scale part of the Vector Mapping is an inverse relationship with the distance to the "floor plane"
-  - in other words, if the "floor plane" is 2 meters down (-Z), then set Scale vector in Vector Mapping node to (0.5, 0.5, 0.5)
-    - the inverse of 2 is 1/2
-    - use 0.5 because 0.5 = 1/2 meters
-	- this is a rough estimate, modify the Scale as needed
+  - for large environments (e.g. a grassy field), use low Scale values, like (0.001, 0.001, 0.001), to improve the ability to move around
+    - gives greater flexibility (i.e. greater amount of space) to move camera, before HDRI background is distorted badly
+  - for small environments, use Scale values between (1, 1, 1) and (0.01, 0.01, 0.01)
+  - Vector Mapping Scale values are typically between (1, 1, 1) and (0.0001, 0.0001, 0.0001)
+    - try adding some geometry to the scene, like a floor plane (small for indoor studio, or big for outdoors grassy field)
+	- try different Vector Mapping Scale values with the some geometry in the scene to see more of the effect
 
-#### Object XYZ to UVW
+### Object XYZ to UVW
 Summary:
 Two reasons (of many) for this:
 - prevent procedural texture "sliding" when mesh is deformed (note #1), or

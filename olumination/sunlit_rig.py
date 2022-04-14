@@ -329,9 +329,9 @@ def get_sunlit_sensor_for_light(light_obj):
 # Check for bones with names that match Sunlit Rig armature bone names.
 # If armature's bone names reach minimum number of matches then return True.
 def is_sunlit_armature(obj):
-    b_name_match_count = 0
-    if obj.type != "ARMATURE":
+    if obj is None or obj.type != "ARMATURE":
         return False
+    b_name_match_count = 0
     for b_name in SUNLIT_BONE_ALL_NAMES:
         if obj.data.bones.get(b_name) != None:
             b_name_match_count += 1
