@@ -49,7 +49,7 @@ from .light_color import OLuminLC_ColorMath
 from .light_energy import OLuminLE_MathLightEnergy
 from .world_envo import OLuminWE_MobileBackground
 from .xyz_to_uvw import (OLuminXTU_ObjectShaderXYZMap, OLuminXTU_FixXYZCameras,
-    XTU_CAMERA_NAME_XY, XTU_CAMERA_NAME_XZED, XTU_XY_MAP_NAME, XTU_XZED_MAP_NAME)
+    XTU_CAMERA_NAME_XY, XTU_CAMERA_NAME_XZ, XTU_XY_MAP_NAME, XTU_XZ_MAP_NAME)
 
 AngularDiameterEnabled = False
 if bpy.app.version < (2,80,0):
@@ -223,15 +223,15 @@ class OLUMIN_PT_XYZ_to_UVW(bpy.types.Panel):
         box = layout.box()
         box.label(text="Object Material Shader")
         box.operator("olumin_xtu.fix_xyz_cameras")
+        box.prop(scn, "OLuminXTU_FixCamAll")
+
         box.operator("olumin_xtu.object_shader_xyz_map")
 
         box.prop(scn, "OLuminXTU_AppendMaterial")
-
         sub1 = box.column()
         sub1.active = scn.OLuminXTU_AppendMaterial
         sub1.prop(scn, "OLuminXTU_ColorTextureType")
         sub1.prop(scn, "OLuminXTU_NewMatPerObj")
-
         # add to existing is only available if not forced to create new material per selected object
         sub2 = box.column()
         sub2.active = (not scn.OLuminXTU_NewMatPerObj) and scn.OLuminXTU_AppendMaterial
@@ -444,6 +444,9 @@ def register_props():
     bts.OLuminLE_MathInputValue = bp.FloatProperty(name="Input Value", description="The energy value of the " +
         "selected light(s) will be math'ed with this number, according to Math Function", default=1.0)
 
+    bts.OLuminXTU_FixCamAll = bp.BoolProperty(name="Fix location", description="If enabled, selected cameras' " +
+        "rotations and locations will also be reset to defaults", default=True)
+
     bts.OLuminXTU_AppendMaterial = bp.BoolProperty(name="Append Material", description="If enabled, a simple " +
         "material is created to demonstrate usage of the XYZ to UVW map, by way of the two UV Maps", default=True)
 
@@ -466,14 +469,14 @@ def register_props():
     bts.OLuminXTU_ReuseCameraNameXY = bp.StringProperty(name="'XY' Cam name", description="Name of camera to use for " +
         "'XY' projection, as part of the XYZ to UVW projection process", default=XTU_CAMERA_NAME_XY)
     bts.OLuminXTU_ReuseCameraNameXZ = bp.StringProperty(name="'XZ' Cam name", description="Name of camera to use for " +
-        "'XZ' projection, as part of the XYZ to UVW projection process", default=XTU_CAMERA_NAME_XZED)
+        "'XZ' projection, as part of the XYZ to UVW projection process", default=XTU_CAMERA_NAME_XZ)
 
     bts.OLuminXTU_ReuseUVMaps = bp.BoolProperty(name="Re-use UV Maps", description="Try to re-use existing UV Maps" +
         "(found by name) for projecting XYZ to UVW onto selected object(s)", default=False)
     bts.OLuminXTU_ReuseUVNameXY = bp.StringProperty(name="'XY' UV Map name", description="Name of UV Map to re-use " +
         "for 'XY' projection, as part of the XYZ to UVW projection process", default=XTU_XY_MAP_NAME)
     bts.OLuminXTU_ReuseUVNameXZ = bp.StringProperty(name="'XZ' UV Map name", description="Name of UV Map to re-use " +
-        "for 'XZ' projection, as part of the XYZ to UVW projection process", default=XTU_XZED_MAP_NAME)
+        "for 'XZ' projection, as part of the XYZ to UVW projection process", default=XTU_XZ_MAP_NAME)
 
 if __name__ == "__main__":
     register()

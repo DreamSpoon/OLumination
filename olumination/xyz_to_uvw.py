@@ -25,9 +25,16 @@ else:
     from .imp_v28 import *
 
 XTU_XY_MAP_NAME = "xy_to_uv"
-XTU_XZED_MAP_NAME = "xz_to_uv"
+XTU_XZ_MAP_NAME = "xz_to_uv"
 XTU_CAMERA_NAME_XY = "Camera.UVxy"
-XTU_CAMERA_NAME_XZED = "Camera.UVxz"
+XTU_CAMERA_NAME_XZ = "Camera.UVxz"
+
+# Offset by 0.5 in all dimensions, this seems to relate to:
+#     (0.5, 0.5) is middle in UV coordinates, and
+#     (0, 0, 0) is middle in XYZ coordinates.
+CAM_START_LOCATION = (0.5, 0.5, 0.5)
+CAM_START_ROTATION_XY = (0, 0, 0)
+CAM_START_ROTATION_XZ = (math.radians(90), 0, 0)
 
 class OLuminXTU_ObjectShaderXYZMap(bpy.types.Operator):
     """With selected objects, append a new shader to capture XYZ vertex coordinates and store them in two UV maps """ \
@@ -54,6 +61,9 @@ class OLuminXTU_ObjectShaderXYZMap(bpy.types.Operator):
         # initialize the nested-dictionary of (string, string) combinations of (uv_map_xy.name, uv_map_xzed.name)
         # pointing to material shaders
         grp_mat_shaders = {}
+        # used with "Add to Existing Material" to prevent spamming a single shader when multiple objects are selected
+        already_added_to_shaders = []
+        # with selected MESH objects, do the XYZ to UVW mapping process
         for obj in context.selected_objects:
             # cannot apply material to non-mesh objects
             if obj.type != "MESH":
@@ -70,7 +80,7 @@ class OLuminXTU_ObjectShaderXYZMap(bpy.types.Operator):
             if uv_map_xy is None:
                 uv_map_xy = create_object_uv_map(obj, get_unused_uv_map_name(obj, XTU_XY_MAP_NAME))
             if uv_map_xzed is None:
-                uv_map_xzed = create_object_uv_map(obj, get_unused_uv_map_name(obj, XTU_XZED_MAP_NAME))
+                uv_map_xzed = create_object_uv_map(obj, get_unused_uv_map_name(obj, XTU_XZ_MAP_NAME))
 
             # prevent errors
             if uv_map_xy is None or uv_map_xzed is None:
@@ -125,10 +135,12 @@ class OLuminXTU_ObjectShaderXYZMap(bpy.types.Operator):
                     scn.OLuminXTU_ColorTextureType)
                 obj.data.materials.append(mat_shader_per_obj)
             else:
-                # add to existing material shader if it exists
-                if scn.OLuminXTU_AddToExisting and obj.active_material != None:
+                # add to existing material shader if it exists, but not if it has already been added to
+                # (in case multiple mesh objects with the same shader are selected when using this function)
+                if scn.OLuminXTU_AddToExisting and obj.active_material != None and obj.active_material not in already_added_to_shaders:
                     create_xyz_to_uvw_mat_shader(obj.active_material, saved_uv_map_xy_name, saved_uv_map_xzed_name, \
                         scn.OLuminXTU_ColorTextureType)
+                    already_added_to_shaders.append(obj.active_material)
                 # otherwise, try to get previous material shader with UV map names matching this object's UV map names
                 # (the XY and XZ 'UV Maps')
                 else:
@@ -242,23 +254,18 @@ def create_xyz_to_uvw_mat_shader(prev_mat_shader, xy_uvmap_name, xzed_uvmap_name
 
 def add_uv_project_camera(context, proj_type):
     if proj_type == "XY":
-        bpy.ops.object.camera_add(location=(0, 0, 0), rotation=(0, 0, 0))
+        bpy.ops.object.camera_add(location=CAM_START_LOCATION, rotation=CAM_START_ROTATION_XY)
         cam_xy = context.active_object
         cam_xy.name = XTU_CAMERA_NAME_XY
         cam_xy.data.type = "ORTHO"
         cam_xy.data.ortho_scale = 1.0
-        # Offset by 0.5 in all dimensions, this seems to relate to:
-        #     (0.5, 0.5) is middle in UV coordinates, and
-        #     (0, 0, 0) is middle in XYZ coordinates.
-        cam_xy.location = (0.5, 0.5, 0.5)
         return cam_xy
     elif proj_type == "XZ":
-        bpy.ops.object.camera_add(location=(0, 0, 0), rotation=(math.radians(90), 0, 0))
+        bpy.ops.object.camera_add(location=CAM_START_LOCATION, rotation=CAM_START_ROTATION_XZ)
         cam_xzed = context.active_object
-        cam_xzed.name = XTU_CAMERA_NAME_XZED
+        cam_xzed.name = XTU_CAMERA_NAME_XZ
         cam_xzed.data.type = "ORTHO"
         cam_xzed.data.ortho_scale = 1.0
-        cam_xzed.location = (0.5, 0.5, 0.5)
         return cam_xzed
     return None
 
@@ -293,7 +300,7 @@ def apply_proj_modifiers(context, obj, copy_hide_modifiers, proj_mod_xy, proj_mo
     bpy.ops.object.modifier_apply(modifier=proj_mod_xzed.name)
 
     if copy_hide_modifiers:
-        # re-create them, instead of copying - haha!
+        # re-create them, instead of copying - easier
         b_mod_xy, b_mod_xzed = add_object_uv_project_mods(obj, uv_map_xy_name, uv_map_xzed_name, cam_xy, cam_xzed)
         # hide them
         b_mod_xy.show_viewport = False
@@ -302,7 +309,7 @@ def apply_proj_modifiers(context, obj, copy_hide_modifiers, proj_mod_xy, proj_mo
         b_mod_xzed.show_render = False
 
 class OLuminXTU_FixXYZCameras(bpy.types.Operator):
-    """Fix the visibility of XYZ to UVW cameras"""
+    """Fix all XYZ to UVW cameras: visibility (and location, rotation)"""
     bl_idname = "olumin_xtu.fix_xyz_cameras"
     bl_label = "Fix XYZ Cameras"
     bl_options = {'REGISTER', 'UNDO'}
@@ -312,6 +319,15 @@ class OLuminXTU_FixXYZCameras(bpy.types.Operator):
         for obj in all_obj_list:
             # hide any camera objects with name matching XYZ to UVW standard camera name
             # TODO instead of using sloppy 'startswith' string check, check for ends with .001 or .002, etc.
-            if obj.type == "CAMERA" and (obj.name.startswith(XTU_CAMERA_NAME_XY) or obj.name.startswith(XTU_CAMERA_NAME_XZED)):
+            if obj.type == "CAMERA" and (obj.name.startswith(XTU_CAMERA_NAME_XY) or obj.name.startswith(XTU_CAMERA_NAME_XZ)):
                 set_object_hide_view(obj, True)
+                if context.scene.OLuminXTU_FixCamAll:
+                    if obj.name.startswith(XTU_CAMERA_NAME_XY):
+                        obj.location = CAM_START_LOCATION
+                        obj.rotation_mode = "XYZ"
+                        obj.rotation_euler = CAM_START_ROTATION_XY
+                    elif obj.name.startswith(XTU_CAMERA_NAME_XZ):
+                        obj.location = CAM_START_LOCATION
+                        obj.rotation_mode = "XYZ"
+                        obj.rotation_euler = CAM_START_ROTATION_XZ
         return {'FINISHED'}
