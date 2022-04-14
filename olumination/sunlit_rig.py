@@ -626,6 +626,9 @@ def create_sunlit_rig(context, hemisphere_only, num_suns, num_sphere_subdiv, num
 
     # create camera, to use for setting ODisk sizes
     create_sunlit_rig_camera(context, sl_armature)
+    # point the Sunlit Rig's test camera at the default first ODisk, if ODisk created
+    if num_occluding_disks > 0:
+        set_sunlit_cam_odisk_target(sl_armature, 0)
 
 def create_sunlit_rig_camera(context, sl_armature):
     bpy.ops.object.camera_add(location=(0, 0, 0), rotation=(0, 0, 0))
@@ -690,17 +693,6 @@ def create_sun_lights(context, sl_arm, sun_bone_name_tuples, prepend_str, loc, s
         c = c + 1
 
     return lights
-
-def set_sunlit_cam_odisk_target(sl_armature, odisk_num):
-    cam_list = get_objects_parented_to(sl_armature, SUNLIT_CAMERA_PREPEND)
-    obj_list = get_objects_parented_to_bone(sl_armature, any_prepend_name_num(SUNLIT_BONE_ODISK, odisk_num), SUNLIT_ODISK_PREPEND)
-    if len(cam_list) < 1 or len(obj_list) < 1:
-        print("cam is None or obj_target is None")
-        return
-
-    tt_const = cam_list[0].constraints.get(SUNLIT_CAMERA_TTC_PREPEND)
-    if tt_const != None:
-        tt_const.target = obj_list[0]
 
 def get_fibonacci_sphere_points(num_points, sphere_radius):
     points = []
@@ -1516,7 +1508,7 @@ class OLuminSL_PointODiskFromView(bpy.types.Operator):
         rv3d = context.region_data
         view_dir = matrix_vector_mult(rv3d.view_rotation, Vector((0, 0, -1)))
 
-        odisk_num = scn.OLuminSL_ODiskNumPointFromView
+        odisk_num = scn.OLuminSL_ODiskIndexForViewPoint
         for ob in context.selected_objects:
             if is_sunlit_armature(ob):
                 point_target_bone = ob.pose.bones.get(any_prepend_name_num(SUNLIT_BONE_ODISK_TARGET, odisk_num))
@@ -1544,5 +1536,19 @@ class OLuminSL_PointCamAtODisk(bpy.types.Operator):
         if not is_sunlit_armature(act_ob):
             self.report({'ERROR'}, "Cannot do function PointCamAtODisk, because active object is not Sunlit Rig type")
             return {'CANCELLED'}
-        set_sunlit_cam_odisk_target(act_ob, context.scene.OLuminSL_ODiskNumPointFromView)
+        set_sunlit_cam_odisk_target(act_ob, context.scene.OLuminSL_ODiskIndexForCameraPoint)
         return {'FINISHED'}
+
+def set_sunlit_cam_odisk_target(sl_armature, odisk_num):
+    # get the test camera object parented to the Sunlit armature
+    cam_list = get_objects_parented_to(sl_armature, SUNLIT_CAMERA_PREPEND)
+    # get the ODisk sensor plane object parented to the Sunlit armature
+    obj_list = get_objects_parented_to_bone(sl_armature, any_prepend_name_num(SUNLIT_BONE_ODISK, odisk_num), SUNLIT_ODISK_PREPEND)
+    if len(cam_list) < 1 or len(obj_list) < 1:
+        print("cam is None or obj_target is None")
+        return
+
+    # adjust the "Track To" modifier of the test camera, to ensure it points at the ODisk sensor plane
+    tt_const = cam_list[0].constraints.get(SUNLIT_CAMERA_TTC_PREPEND)
+    if tt_const != None:
+        tt_const.target = obj_list[0]

@@ -105,18 +105,21 @@ class OLUMIN_PT_SunlitRigOther(bpy.types.Panel):
         layout = self.layout
         scn = context.scene
         box = layout.box()
-        box.prop(scn, "OLuminSL_OtherAdvancedOptions")
-        box = layout.box()
         box.operator("olumin_sl.fix_rig_visibility")
         box.prop(scn, "OLuminSL_HideBlindsToo")
         box = layout.box()
-        box.label(text="Point Light with View Center")
-        box.operator("olumin_sl.point_regular_from_view")
-        box.prop(scn, "OLuminSL_RegularNumPointFromView")
-        box.operator("olumin_sl.point_odisk_from_view")
-        box.prop(scn, "OLuminSL_ODiskNumPointFromView")
-        box.prop(scn, "OLuminSL_ReverseLightPointDirection")
+        box.prop(scn, "OLuminSL_OtherAdvancedOptions")
+        box = layout.box()
+        box.label(text="Adjust ODisk Help")
         box.operator("olumin_sl.point_cam_at_odisk")
+        box.prop(scn, "OLuminSL_ODiskIndexForCameraPoint")
+        if scn.OLuminSL_OtherAdvancedOptions:
+            box = layout.box()
+            box.label(text="Point Light with View Center")
+            box.operator("olumin_sl.point_regular_from_view")
+            box.prop(scn, "OLuminSL_RegularNumPointFromView")
+            box.operator("olumin_sl.point_odisk_from_view")
+            box.prop(scn, "OLuminSL_ODiskIndexForViewPoint")
         box = layout.box()
         box.label(text="Rig Sensor Input")
         box.operator("olumin_sl.bake_selected_sensors")
@@ -392,14 +395,18 @@ def register_props():
         description="Occluding Disk sun sensor image height (in percent of image height) to sample when computing " +
         "ODisk sun object's color", subtype="PERCENTAGE", default=0.5, min=0.0, max=1.0)
 
-    bts.OLuminSL_RegularNumPointFromView = bp.IntProperty(name="Regular Sun Index", description="Index of regular " +
-        "sun for which pointing direction must be aligned with view center direction", default=0, min=0)
-    bts.OLuminSL_ODiskNumPointFromView = bp.IntProperty(name="ODisk Index", description="Index of ODisk for which " +
-        "pointing direction must be aligned with view center direction", default=0, min=0)
-
     bts.OLuminSL_ReverseLightPointDirection = bp.BoolProperty(name="Reverse Light Point Direction",
         description="Reverse the regular 'point at' direction, so light points away from view/camera center",
         default=False)
+
+    bts.OLuminSL_RegularNumPointFromView = bp.IntProperty(name="Regular Sun Index", description="Index of regular " +
+        "sun for which pointing direction must be aligned with view center direction", default=0, min=0)
+    bts.OLuminSL_ODiskIndexForViewPoint = bp.IntProperty(name="ODisk Index", description="Index of ODisk for which " +
+        "pointing direction must be aligned with view center direction", default=0, min=0)
+
+    bts.OLuminSL_ODiskIndexForCameraPoint = bp.IntProperty(name="ODisk Index", description="Point Sunlit Camera at " +
+        "Occluding Disk (given by Index of ODisk) to make it easier to set up Occluding Disks", default=0, min=0)
+
 
     bts.OLuminLC_MathFunction = bp.EnumProperty(
         items = [

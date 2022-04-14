@@ -322,12 +322,13 @@ class OLuminXTU_FixXYZCameras(bpy.types.Operator):
             if obj.type == "CAMERA" and (obj.name.startswith(XTU_CAMERA_NAME_XY) or obj.name.startswith(XTU_CAMERA_NAME_XZ)):
                 set_object_hide_view(obj, True)
                 if context.scene.OLuminXTU_FixCamAll:
+                    obj.location = CAM_START_LOCATION
+                    obj.data.type = "ORTHO"
+                    obj.data.ortho_scale = 1.0
                     if obj.name.startswith(XTU_CAMERA_NAME_XY):
-                        obj.location = CAM_START_LOCATION
                         obj.rotation_mode = "XYZ"
                         obj.rotation_euler = CAM_START_ROTATION_XY
                     elif obj.name.startswith(XTU_CAMERA_NAME_XZ):
-                        obj.location = CAM_START_LOCATION
                         obj.rotation_mode = "XYZ"
                         obj.rotation_euler = CAM_START_ROTATION_XZ
         return {'FINISHED'}
