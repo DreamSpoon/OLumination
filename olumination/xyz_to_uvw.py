@@ -132,7 +132,7 @@ class OLuminXTU_ObjectShaderXYZMap(bpy.types.Operator):
             if scn.OLuminXTU_NewMatPerObj:
                 # create a completely new material shader and append material to each object
                 mat_shader_per_obj = create_xyz_to_uvw_mat_shader(None, saved_uv_map_xy_name, saved_uv_map_xzed_name,
-                    scn.OLuminXTU_ColorTextureType)
+                    scn.OLuminXTU_ColorTextureType, scn.OLuminXTU_UnderLowestNode)
                 obj.data.materials.append(mat_shader_per_obj)
             else:
                 # add to existing material shader if it exists, but not if it has already been added to
@@ -140,7 +140,7 @@ class OLuminXTU_ObjectShaderXYZMap(bpy.types.Operator):
                 if scn.OLuminXTU_AddToExisting and obj.active_material != None:
                     if obj.active_material not in already_added_to_shaders:
                         create_xyz_to_uvw_mat_shader(obj.active_material, saved_uv_map_xy_name,
-                            saved_uv_map_xzed_name, scn.OLuminXTU_ColorTextureType)
+                            saved_uv_map_xzed_name, scn.OLuminXTU_ColorTextureType, scn.OLuminXTU_UnderLowestNode)
                         already_added_to_shaders.append(obj.active_material)
                 # otherwise, try to get previous material shader with UV map names matching this object's UV map names
                 # (the XY and XZ 'UV Maps')
@@ -157,7 +157,7 @@ class OLuminXTU_ObjectShaderXYZMap(bpy.types.Operator):
                     if obj_mat_shader is None:
                         # create the mat because it wasn't found in the name combinations nested-dictionary
                         obj_mat_shader = create_xyz_to_uvw_mat_shader(None, saved_uv_map_xy_name, saved_uv_map_xzed_name,
-                            scn.OLuminXTU_ColorTextureType)
+                            scn.OLuminXTU_ColorTextureType, scn.OLuminXTU_UnderLowestNode)
                         # add the material to the nested-dictionary, for use later if needed
                         # this will reduce the amount of redundant material shaders created
                         xy_name_dictionary[saved_uv_map_xzed_name] = obj_mat_shader
@@ -181,9 +181,10 @@ def get_unused_uv_map_name(obj, base_map_name):
     return None
 
 # create material shader nodes, to interact with two UV maps (the XYZ to UVW map)
-def create_xyz_to_uvw_mat_shader(prev_mat_shader, xy_uvmap_name, xzed_uvmap_name, color_texture_node_type):
+def create_xyz_to_uvw_mat_shader(prev_mat_shader, xy_uvmap_name, xzed_uvmap_name, color_texture_node_type, under_lowest_node):
     mat_shader = None
     tree_nodes = None
+    low_y = 0
     # create new material shader if no previous material shader given
     if prev_mat_shader == None:
         mat_shader = bpy.data.materials.new(name="xyz_to_uvw_mat")
@@ -195,49 +196,53 @@ def create_xyz_to_uvw_mat_shader(prev_mat_shader, xy_uvmap_name, xzed_uvmap_name
         mat_shader = prev_mat_shader
         mat_shader.use_nodes = True
         tree_nodes = mat_shader.node_tree.nodes
+        if under_lowest_node:
+            low_y = lowest_y_in_shader_tree(tree_nodes) - 180
 
     # initialize variables
     new_nodes = {}
 
     # material shader nodes
-    node = tree_nodes.new(type="ShaderNodeOutputMaterial")
-    node.location = (426, 112)
-    new_nodes["Material Output"] = node
-
-    node = tree_nodes.new(type="ShaderNodeCombineXYZ")
-    node.location = (-580, 61)
-    new_nodes["Combine XYZ"] = node
-
-    # vector to color node is special, because it is variable
-    node = tree_nodes.new(type=color_texture_node_type)
-    node.location = (40, 104)
-    new_nodes[color_texture_node_type] = node
-
-    node = tree_nodes.new(type="ShaderNodeBsdfPrincipled")
-    node.location = (224, 204)
-    new_nodes["Principled BSDF"] = node
-
     node = tree_nodes.new(type="ShaderNodeUVMap")
-    node.location = (-954, 62)
-    node.uv_map = xy_uvmap_name
-    new_nodes["UV Map"] = node
-
-    node = tree_nodes.new(type="ShaderNodeUVMap")
-    node.location = (-952, -65)
+    node.location = (-952, -65+low_y)
     node.uv_map = xzed_uvmap_name
     new_nodes["UV Map.001"] = node
 
+    node = tree_nodes.new(type="ShaderNodeUVMap")
+    node.location = (-954, 62+low_y)
+    node.uv_map = xy_uvmap_name
+    new_nodes["UV Map"] = node
+
     node = tree_nodes.new(type="ShaderNodeSeparateXYZ")
-    node.location = (-748, 84)
+    node.location = (-748, 84+low_y)
     new_nodes["Separate XYZ.001"] = node
 
     node = tree_nodes.new(type="ShaderNodeSeparateXYZ")
-    node.location = (-750, -40)
+    node.location = (-750, -40+low_y)
     new_nodes["Separate XYZ"] = node
 
+    node = tree_nodes.new(type="ShaderNodeCombineXYZ")
+    node.location = (-580, 61+low_y)
+    new_nodes["Combine XYZ"] = node
+
     node = tree_nodes.new(type="ShaderNodeMapping")
-    node.location = (-360, 120)
+    node.location = (-360, 120+low_y)
     new_nodes["Mapping"] = node
+
+    # if color texture node is given, then create the final 3 nodes
+    if color_texture_node_type != "Unconnected":
+        # vector to color node is special, because it is variable
+        node = tree_nodes.new(type=color_texture_node_type)
+        node.location = (10, 120+low_y)
+        new_nodes[color_texture_node_type] = node
+    
+        node = tree_nodes.new(type="ShaderNodeBsdfPrincipled")
+        node.location = (224, 120+low_y)
+        new_nodes["Principled BSDF"] = node
+    
+        node = tree_nodes.new(type="ShaderNodeOutputMaterial")
+        node.location = (466, 120+low_y)
+        new_nodes["Material Output"] = node
 
     # links between nodes
     tree_links = mat_shader.node_tree.links
@@ -245,13 +250,27 @@ def create_xyz_to_uvw_mat_shader(prev_mat_shader, xy_uvmap_name, xzed_uvmap_name
     tree_links.new(new_nodes["UV Map"].outputs[0], new_nodes["Separate XYZ.001"].inputs[0])
     tree_links.new(new_nodes["Separate XYZ.001"].outputs[0], new_nodes["Combine XYZ"].inputs[0])
     tree_links.new(new_nodes["Separate XYZ.001"].outputs[1], new_nodes["Combine XYZ"].inputs[1])
-    tree_links.new(new_nodes["Principled BSDF"].outputs[0], new_nodes["Material Output"].inputs[0])
     tree_links.new(new_nodes["Separate XYZ"].outputs[1], new_nodes["Combine XYZ"].inputs[2])
-    tree_links.new(new_nodes[color_texture_node_type].outputs[0], new_nodes["Principled BSDF"].inputs[0])
     tree_links.new(new_nodes["Combine XYZ"].outputs[0], new_nodes["Mapping"].inputs[0])
-    tree_links.new(new_nodes["Mapping"].outputs[0], new_nodes[color_texture_node_type].inputs[0])
+
+    # if color texture node is given, then create the final links
+    if color_texture_node_type != "Unconnected":
+        tree_links.new(new_nodes["Mapping"].outputs[0], new_nodes[color_texture_node_type].inputs[0])
+        tree_links.new(new_nodes[color_texture_node_type].outputs[0], new_nodes["Principled BSDF"].inputs[0])
+        tree_links.new(new_nodes["Principled BSDF"].outputs[0], new_nodes["Material Output"].inputs[0])
 
     return mat_shader
+
+# returns zero if tree_nodes is empty
+def lowest_y_in_shader_tree(tree_nodes):
+    if len(tree_nodes) < 1:
+        return 0
+    bottom_y = tree_nodes[0].location.y - tree_nodes[0].height
+    for node in tree_nodes:
+        node_bottom = node.location.y - node.height 
+        if node_bottom < bottom_y:
+            bottom_y = node_bottom
+    return bottom_y
 
 def add_uv_project_camera(context, proj_type):
     if proj_type == "XY":

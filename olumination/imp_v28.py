@@ -20,21 +20,22 @@ import bpy
 import bmesh
 
 COLOR_TEXTURE_TYPES = [
-    ("ShaderNodeTexBrick", "Brick Texture", "", 1),
-    ("ShaderNodeTexChecker", "Checker Texture", "", 2),
-    ("ShaderNodeTexCoord", "TexCoord Texture", "", 3),
-    ("ShaderNodeTexEnvironment", "Environment Texture", "", 4),
-    ("ShaderNodeTexGradient", "Gradient Texture", "", 5),
-    ("ShaderNodeTexIES", "IES Texture", "", 6),
-    ("ShaderNodeTexImage", "Image Texture", "", 7),
-    ("ShaderNodeTexMagic", "Magic Texture", "", 8),
-    ("ShaderNodeTexMusgrave", "Musgrave Texture", "", 9),
-    ("ShaderNodeTexNoise", "Noise Texture", "", 10),
-    ("ShaderNodeTexPointDensity", "Point Density Texture", "", 11),
-    ("ShaderNodeTexSky", "Sky Texture", "", 12),
-    ("ShaderNodeTexVoronoi", "Voronoi Texture", "", 13),
-    ("ShaderNodeTexWave", "Wave Texture", "", 14),
-    ("ShaderNodeTexWhiteNoise", "White Noise Texture", "", 15),
+    ("Unconnected", "Unconnected", "Color, Shader, Material Output nodes will not be generated", 1),
+    ("ShaderNodeTexBrick", "Brick Texture", "", 2),
+    ("ShaderNodeTexChecker", "Checker Texture", "", 3),
+    ("ShaderNodeTexCoord", "TexCoord Texture", "", 4),
+    ("ShaderNodeTexEnvironment", "Environment Texture", "", 5),
+    ("ShaderNodeTexGradient", "Gradient Texture", "", 6),
+    ("ShaderNodeTexIES", "IES Texture", "", 7),
+    ("ShaderNodeTexImage", "Image Texture", "", 8),
+    ("ShaderNodeTexMagic", "Magic Texture", "", 9),
+    ("ShaderNodeTexMusgrave", "Musgrave Texture", "", 10),
+    ("ShaderNodeTexNoise", "Noise Texture", "", 11),
+    ("ShaderNodeTexPointDensity", "Point Density Texture", "", 12),
+    ("ShaderNodeTexSky", "Sky Texture", "", 13),
+    ("ShaderNodeTexVoronoi", "Voronoi Texture", "", 14),
+    ("ShaderNodeTexWave", "Wave Texture", "", 15),
+    ("ShaderNodeTexWhiteNoise", "White Noise Texture", "", 16),
 ]
 
 # this function also works to multiply Quaternion * Vector

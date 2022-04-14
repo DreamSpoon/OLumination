@@ -20,17 +20,18 @@ import bpy
 import bmesh
 
 COLOR_TEXTURE_TYPES = [
-    ("ShaderNodeTexBrick", "Brick Texture", "", 1),
-    ("ShaderNodeTexChecker", "Checker Texture", "", 2),
-    ("ShaderNodeTexEnvironment", "Environment Texture", "", 3),
-    ("ShaderNodeTexGradient", "Gradient Texture", "", 4),
-    ("ShaderNodeTexImage", "Image Texture", "", 5),
-    ("ShaderNodeTexMagic", "Magic Texture", "", 6),
-    ("ShaderNodeTexMusgrave", "Musgrave Texture", "", 7),
-    ("ShaderNodeTexNoise", "Noise Texture", "", 8),
-    ("ShaderNodeTexSky", "Sky Texture", "", 9),
-    ("ShaderNodeTexVoronoi", "Voronoi Texture", "", 10),
-    ("ShaderNodeTexWave", "Wave Texture", "", 11),
+    ("Unconnected", "Unconnected", "Color, Shader, Material Output nodes will not be generated", 1),
+    ("ShaderNodeTexBrick", "Brick Texture", "", 2),
+    ("ShaderNodeTexChecker", "Checker Texture", "", 3),
+    ("ShaderNodeTexEnvironment", "Environment Texture", "", 4),
+    ("ShaderNodeTexGradient", "Gradient Texture", "", 5),
+    ("ShaderNodeTexImage", "Image Texture", "", 6),
+    ("ShaderNodeTexMagic", "Magic Texture", "", 7),
+    ("ShaderNodeTexMusgrave", "Musgrave Texture", "", 8),
+    ("ShaderNodeTexNoise", "Noise Texture", "", 9),
+    ("ShaderNodeTexSky", "Sky Texture", "", 10),
+    ("ShaderNodeTexVoronoi", "Voronoi Texture", "", 11),
+    ("ShaderNodeTexWave", "Wave Texture", "", 12),
 ]
 
 # this function also works to multiply Quaternion * Vector

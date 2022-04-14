@@ -239,6 +239,7 @@ class OLUMIN_PT_XYZ_to_UVW(bpy.types.Panel):
         sub2 = box.column()
         sub2.active = (not scn.OLuminXTU_NewMatPerObj) and scn.OLuminXTU_AppendMaterial
         sub2.prop(scn, "OLuminXTU_AddToExisting")
+        sub2.prop(scn, "OLuminXTU_UnderLowestNode")
 
         box.label(text="Modifiers")
         box.prop(scn, "OLuminXTU_ApplyModifiers")
@@ -465,6 +466,9 @@ def register_props():
     bts.OLuminXTU_AddToExisting = bp.BoolProperty(name="Add to Existing Material", description="If enabled, try to " +
         "add shader nodes to object's currently active material. If not enabled, create a new material shader on " +
         "the object, appended after current material(s) on the object", default=False)
+    bts.OLuminXTU_UnderLowestNode = bp.BoolProperty(name="Under Lowest Node", description="New material shader " +
+        "nodes that are created by XYZ to UVW will be located below lowest shader node in existing material",
+        default=True)
     bts.OLuminXTU_ApplyModifiers = bp.BoolProperty(name="Apply Modifiers", description="Apply 'UV Project' " +
         "modifiers to the UV Maps. I.e. Doing this will save a copy of the XYZ coordinates of each vertex into " +
         "the two UV Maps (XY and XZ maps)", default=True)
