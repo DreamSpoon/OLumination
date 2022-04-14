@@ -20,7 +20,6 @@ import math
 from mathutils import Vector
 import bpy
 import bmesh
-import bpy_extras.view3d_utils
 
 if bpy.app.version < (2,80,0):
     from .imp_v27 import *
@@ -253,27 +252,6 @@ def set_object_list_hide_render(ob_list, hide_state):
 def get_object_hide_render(ob):
     return ob.hide_render
 
-def object_create_mesh(context, mesh_ob_name, mesh_verts):
-    mesh_ob = bpy.data.meshes.new(mesh_ob_name+"_mesh")
-    ob = bpy.data.objects.new(mesh_ob_name, mesh_ob)
-    scene_link_object(context, ob)
-    set_active_object(context, ob)
-    select_object(ob)
-    mesh_data = context.object.data
-    bm = bmesh.new()
-    for v_pos in mesh_verts:
-        bm.verts.new(v_pos)
-    bm.verts.ensure_lookup_table()
-
-    bm.edges.new([bm.verts[0], bm.verts[1]])
-    bm.edges.new([bm.verts[1], bm.verts[2]])
-    bm.edges.new([bm.verts[2], bm.verts[0]])
-    bm.faces.new([bm.verts[0], bm.verts[1], bm.verts[2]])
-
-    bm.to_mesh(mesh_data)
-    bm.free()
-    return ob
-
 def any_prepend_name_num(prepend_name, num):
     if num < 1:
         return prepend_name
@@ -350,18 +328,21 @@ def get_sunlit_sensor_for_light(light_obj):
 
 # Check for bones with names that match Sunlit Rig armature bone names.
 # If armature's bone names reach minimum number of matches then return True.
-def is_sunlit_armature(ob):
+def is_sunlit_armature(obj):
     b_name_match_count = 0
-    if ob.type != "ARMATURE":
+    if obj.type != "ARMATURE":
         return False
     for b_name in SUNLIT_BONE_ALL_NAMES:
-        if ob.data.bones.get(b_name) != None:
+        if obj.data.bones.get(b_name) != None:
             b_name_match_count += 1
             if b_name_match_count >= SUNLIT_BONE_MATCH_MIN:
                 return True
 
-def is_sunlit_odisk(ob):
-    return ob.name.startswith(SUNLIT_ODISK_SUN_PREPEND)
+def is_sunlit_odisk(obj):
+    return obj.name.startswith(SUNLIT_ODISK_SUN_PREPEND)
+
+def is_sunlit_rig_widget(obj):
+    return obj.name.startswith(SUNLIT_WGT_PREPEND)
 
 def create_sunlit_armature(context, num_sun_lights, num_occluding_disks):
     widget_cube = create_widget_cube(context)
@@ -568,9 +549,6 @@ def create_base_circle(context):
     set_object_hide_render(widget_circle, True)
     return widget_circle
 
-def is_sunlit_rig_widget(obj):
-    return obj.name.startswith(SUNLIT_WGT_PREPEND)
-
 # "rig" includes armature object, widget objects, and objects parented to the armature (e.g. meshes, lights)
 def create_sunlit_rig(context, hemisphere_only, num_suns, num_sphere_subdiv, num_occluding_disks, odisk_include_sun,
         default_sun_energy, default_sun_angle, default_odisk_sun_energy, default_odisk_sun_angle, allow_drivers,
@@ -622,16 +600,14 @@ def create_sunlit_rig(context, hemisphere_only, num_suns, num_sphere_subdiv, num
         set_point_at_locations(context, sl_armature, sun_bone_name_tuples, point_direction_list,
             SUNLIT_EXTRA_POINTDIR)
 
+        # "difference cubes" initially start at the outermost edge of the sphere that the cubes are meant
+        # to intersect, as an "origin" position.
+        # "pose" offsets are used to move the cubes to a starting position which intersects the sphere nicely.
         fix_diff_cube_bone_loc(context, sl_armature, sun_bone_name_tuples, SUNLIT_FIX_DIFF_CUBE_LOC)
 
     # The bone setups and parenting were done in worldspace with Z axis as the up axis, but inside the sl_armature the
     # Y axis is the up axis - so fix it.
-    # deselect all, then select only the sl_armature and fix the rotation
-    #bpy.ops.object.select_all(action='DESELECT')
-    #set_active_object(context, sl_armature)
-    #select_object(sl_armature)
     sl_armature.rotation_euler = (math.radians(270), 0, 0)
-    #bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
 
     # hide objects that distract the user and/or should not be rendered
     set_object_list_hide_view(diff_cubes_list, True)
@@ -662,29 +638,6 @@ def create_sunlit_rig_camera(context, sl_armature):
     tt_const.track_axis = "TRACK_NEGATIVE_Z"
     tt_const.up_axis = "UP_Y"
 
-def set_sunlit_cam_odisk_target(sl_armature, odisk_num):
-    cam_list = get_objects_parented_to(sl_armature, SUNLIT_CAMERA_PREPEND)
-    obj_list = get_objects_parented_to_bone(sl_armature, any_prepend_name_num(SUNLIT_BONE_ODISK, odisk_num), SUNLIT_ODISK_PREPEND)
-    if len(cam_list) < 1 or len(obj_list) < 1:
-        print("cam is None or obj_target is None")
-        return
-
-    tt_const = cam_list[0].constraints.get(SUNLIT_CAMERA_TTC_PREPEND)
-    if tt_const != None:
-        tt_const.target = obj_list[0]
-
-def get_fibonacci_sphere_points(num_points, sphere_radius):
-    points = []
-    phi = math.pi * (3. - math.sqrt(5.))        # golden angle in radians
-    for i in range(num_points):
-        y = 1 - (i / float(num_points - 1)) * 2 # y goes from 1 to -1
-        latitude_radius = math.sqrt(1 - y * y)  # radius at y (radius of circle that would form latitude line on a sphere of radius=1)
-        theta = phi * i                         # golden angle increment
-        x = math.cos(theta) * latitude_radius
-        z = math.sin(theta) * latitude_radius
-        points.append((x*sphere_radius, y*sphere_radius, z*sphere_radius))
-    return points
-
 def create_sunlit_planes(context, sl_arm, bone_tuples, prepend_str, p_radius, loc, is_blinds):
     planes = []
 
@@ -712,9 +665,9 @@ def create_sunlit_diff_cubes(context, sl_arm, sun_bone_name_tuples, prepend_str)
     c = 0
     for s_pivot_b, s_targ_b, sensor_b, diff_cube_b, lit_adjust_b in sun_bone_name_tuples:
         new_obj = create_object_cube(context, obj_prepend_name_num(prepend_str, c), 1, SUNLIT_DIFF_CUBE_OFFSET)
-        context.active_object.parent = sl_arm
-        context.active_object.parent_type = "BONE"
-        context.active_object.parent_bone = diff_cube_b
+        new_obj.parent = sl_arm
+        new_obj.parent_type = "BONE"
+        new_obj.parent_bone = diff_cube_b
 
         diff_cubes.append(context.active_object)
         c = c + 1
@@ -737,6 +690,29 @@ def create_sun_lights(context, sl_arm, sun_bone_name_tuples, prepend_str, loc, s
         c = c + 1
 
     return lights
+
+def set_sunlit_cam_odisk_target(sl_armature, odisk_num):
+    cam_list = get_objects_parented_to(sl_armature, SUNLIT_CAMERA_PREPEND)
+    obj_list = get_objects_parented_to_bone(sl_armature, any_prepend_name_num(SUNLIT_BONE_ODISK, odisk_num), SUNLIT_ODISK_PREPEND)
+    if len(cam_list) < 1 or len(obj_list) < 1:
+        print("cam is None or obj_target is None")
+        return
+
+    tt_const = cam_list[0].constraints.get(SUNLIT_CAMERA_TTC_PREPEND)
+    if tt_const != None:
+        tt_const.target = obj_list[0]
+
+def get_fibonacci_sphere_points(num_points, sphere_radius):
+    points = []
+    phi = math.pi * (3. - math.sqrt(5.))        # golden angle in radians
+    for i in range(num_points):
+        y = 1 - (i / float(num_points - 1)) * 2 # y goes from 1 to -1
+        latitude_radius = math.sqrt(1 - y * y)  # radius at y (radius of circle that would form latitude line on a sphere of radius=1)
+        theta = phi * i                         # golden angle increment
+        x = math.cos(theta) * latitude_radius
+        z = math.sin(theta) * latitude_radius
+        points.append((x*sphere_radius, y*sphere_radius, z*sphere_radius))
+    return points
 
 def set_point_at_locations(context, sl_arm, bone_tuples, loc_list, extra_loc):
     old_3dview_mode = context.object.mode
@@ -1252,7 +1228,7 @@ class OLuminSL_CreateRig(bpy.types.Operator):
         scn = context.scene
         if bpy.app.version < (2,80,0) and (scn.render.engine == "BLENDER_RENDER" or scn.render.engine == "BLENDER_GAME"):
             self.report({'ERROR'}, "Cannot create Sunlig Rig in Blender Render or Blender Game render modes, change " +
-                "render engine to CYCLES and try again.")
+                "render engine to Cycles or EEVEE and try again.")
             return {'CANCELLED'}
         create_sunlit_rig(context, scn.OLuminSL_Hemisphere, scn.OLuminSL_SunCount, scn.OLuminSL_BaseSphereSubdiv,
             scn.OLuminSL_ODiskCount, scn.OLuminSL_ODiskIncludeSun, scn.OLuminSL_SunEnergy, scn.OLuminSL_SunInitAngle,

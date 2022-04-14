@@ -83,8 +83,8 @@ class OLuminPM_DropVertex(bpy.types.Operator):
     bl_label = "Drop Vertex"
     bl_options = {'REGISTER', 'UNDO'}
 
-    def draw(self, context):
-        a = 1
+    #def draw(self, context):
+    #    a = 1
 
     def execute(self, context):
         print("drop vertex executed")

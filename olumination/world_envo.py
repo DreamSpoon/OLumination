@@ -18,11 +18,6 @@
 
 import bpy
 
-if bpy.app.version < (2,80,0):
-    from .imp_v27 import *
-else:
-    from .imp_v28 import *
-
 class OLuminWE_MobileBackground(bpy.types.Operator):
     """Enable movement of the world background environment texture (e.g. HDRI texture), by connecting it to camera location.""" \
     """Select camera before using this function, because active object is used to drive apparent movement of background"""
