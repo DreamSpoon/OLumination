@@ -18,7 +18,6 @@
 
 import bpy
 import math
-from pickle import NONE
 
 if bpy.app.version < (2,80,0):
     from .imp_v27 import *
