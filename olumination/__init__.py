@@ -114,9 +114,9 @@ class OLUMIN_PT_SunlitRigOther(bpy.types.Panel):
         box.operator("olumin_sl.point_regular_from_view")
         box.prop(scn, "OLuminSL_RegularNumPointFromView")
         box.operator("olumin_sl.point_odisk_from_view")
-        box.operator("olumin_sl.point_cam_at_odisk")
         box.prop(scn, "OLuminSL_ODiskNumPointFromView")
         box.prop(scn, "OLuminSL_ReverseLightPointDirection")
+        box.operator("olumin_sl.point_cam_at_odisk")
         box = layout.box()
         box.label(text="Rig Sensor Input")
         box.operator("olumin_sl.bake_selected_sensors")
@@ -255,14 +255,14 @@ class OLUMIN_PT_XYZ_to_UVW(bpy.types.Panel):
         sub.prop(scn, "OLuminXTU_ReuseUVNameXZ")
 
 class OLUMIN_MT_menu(bpy.types.Menu):
-    bl_idname = 'object.olumin.menu'
+    bl_idname = 'olumin_MT_menu_cls'
     bl_label = 'OLumination operators'
 
     def draw(self, context):
         layout = self.layout
         layout.operator(OLuminPM_DropVertex.bl_idname)
 
-def menu_func(self, context):
+def menu_MT_func(self, context):
     self.layout.menu(OLUMIN_MT_menu.bl_idname)
 
 classes = [
@@ -302,13 +302,13 @@ classes = [
 ]
 
 def register():
-    bpy.types.VIEW3D_MT_object.append(menu_func)
+    bpy.types.VIEW3D_MT_object.append(menu_MT_func)
     for cls in classes:
         bpy.utils.register_class(cls)
     register_props()
 
 def unregister():
-    bpy.types.VIEW3D_MT_object.remove(menu_func)
+    bpy.types.VIEW3D_MT_object.remove(menu_MT_func)
     for cls in classes:
         bpy.utils.unregister_class(cls)
 

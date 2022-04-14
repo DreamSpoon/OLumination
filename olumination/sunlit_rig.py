@@ -1506,7 +1506,7 @@ class OLuminSL_PointRegularFromView(bpy.types.Operator):
 
 class OLuminSL_PointODiskFromView(bpy.types.Operator):
     """Point the ODisk sun light in the same direction as the current viewport view direction / camera view """ \
-    """direction. ODisk numbers are zero-indexed, so '0' is the first ODisk, '1' is the second ODisk, etc"""
+    """direction. ODisk numbers start at zero, so '0' is the first ODisk, '1' is the second ODisk, etc"""
     bl_idname = "olumin_sl.point_odisk_from_view"
     bl_label = "Set ODisk Direction from View"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1534,7 +1534,7 @@ class OLuminSL_PointODiskFromView(bpy.types.Operator):
 
 class OLuminSL_PointCamAtODisk(bpy.types.Operator):
     """Use this to help matching background sun size with ODisk size. Point Sunlit Rig's test camera at ODisk """ \
-    """given by ODisk number. ODisk numbers are zero-indexed, so '0' is the first ODisk, '1' is the second ODisk, etc"""
+    """given by ODisk Index. ODisk numbers start at zero, so '0' is the first ODisk, '1' is the second ODisk, etc"""
     bl_idname = "olumin_sl.point_cam_at_odisk"
     bl_label = "Point Cam at ODisk"
     bl_options = {'REGISTER', 'UNDO'}
@@ -1542,7 +1542,7 @@ class OLuminSL_PointCamAtODisk(bpy.types.Operator):
     def execute(self, context):
         act_ob = context.active_object
         if not is_sunlit_armature(act_ob):
-            print("not sunlit armature, no looks")
-            return {'FINISHED'}
+            self.report({'ERROR'}, "Cannot do function PointCamAtODisk, because active object is not Sunlit Rig type")
+            return {'CANCELLED'}
         set_sunlit_cam_odisk_target(act_ob, context.scene.OLuminSL_ODiskNumPointFromView)
         return {'FINISHED'}
