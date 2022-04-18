@@ -3,7 +3,13 @@
 ## Blender Lighting Tools, EEVEE HDRI
 
 General tools to help with HDRI in Cycles and EEVEE, and more to come.
-Video tutorial coming soon.
+Two YouTube tutorials for this addon:
+
+Quick 3D HDRI, World Envo
+https://youtu.be/TDhsuE5uY6M/
+
+XYZ to UVW
+https://youtu.be/oU_RU-mBkDE/
 
 ### Sunlit Rig Create
 EEVEE and HDRI - currently a bit complicated (as of Blender 3.0).
@@ -53,7 +59,10 @@ Note: This function requires the Rigify addon to be enabled. Rigify is included 
 
 ### World Envo - Mobile Background
 Add some "depth" to flat HDRI environments with Mobile Background. Select the Camera that will control the background, and press the World Envo -> Mobile Background button.
-This will add a world background material shader to simulate movement of camera within HDRI. Adjust the Scale part of the Vector mapping, in the world material shader, to set the distance to the "floor" plane. This is a bit of a difficult process and usually requires synchronizing with geometry in the scene. I.e. It's a good idea to set up the geometry in the scene with the HDRI before adjusting the "floor plane".
+This will add a world background material shader to simulate movement of camera within HDRI.
+Adjust the Scale part of the Vector mapping, in the world material shader, to set the distance to the "floor" plane.
+This is a bit of a difficult process and usually requires synchronizing with geometry in the scene.
+I.e. It's a good idea to set up a ground plane in the scene with the HDRI before adjusting the Mobile Environment "Mapping Node" scale.
 
 Notes:
   - the Scale part of the Vector Mapping is an inverse relationship with the distance to the "floor plane"
